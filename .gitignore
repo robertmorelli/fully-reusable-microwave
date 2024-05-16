@@ -131,4 +131,4 @@ dist
 
 # macOS bruh moments
 .DS_Store
-.xcuserstate
+*.xcuserstate
