@@ -14,6 +14,7 @@
 		F43CE9AC2BF59EDD00BB5309 /* FullyReusableMicrowaveTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F43CE9AB2BF59EDD00BB5309 /* FullyReusableMicrowaveTests.swift */; };
 		F43CE9B62BF59EDD00BB5309 /* FullyReusableMicrowaveUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F43CE9B52BF59EDD00BB5309 /* FullyReusableMicrowaveUITests.swift */; };
 		F43CE9B82BF59EDD00BB5309 /* FullyReusableMicrowaveUITestsLaunchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F43CE9B72BF59EDD00BB5309 /* FullyReusableMicrowaveUITestsLaunchTests.swift */; };
+		F47DAFE62BF5C99500F33B6D /* GameShader.metal in Sources */ = {isa = PBXBuildFile; fileRef = F47DAFE52BF5C99500F33B6D /* GameShader.metal */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -45,6 +46,7 @@
 		F43CE9B12BF59EDD00BB5309 /* FullyReusableMicrowaveUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = FullyReusableMicrowaveUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		F43CE9B52BF59EDD00BB5309 /* FullyReusableMicrowaveUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FullyReusableMicrowaveUITests.swift; sourceTree = "<group>"; };
 		F43CE9B72BF59EDD00BB5309 /* FullyReusableMicrowaveUITestsLaunchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FullyReusableMicrowaveUITestsLaunchTests.swift; sourceTree = "<group>"; };
+		F47DAFE52BF5C99500F33B6D /* GameShader.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = GameShader.metal; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -100,6 +102,7 @@
 				F43CE99D2BF59EDD00BB5309 /* Assets.xcassets */,
 				F43CE9A22BF59EDD00BB5309 /* FullyReusableMicrowave.entitlements */,
 				F43CE99F2BF59EDD00BB5309 /* Preview Content */,
+				F47DAFE52BF5C99500F33B6D /* GameShader.metal */,
 			);
 			path = FullyReusableMicrowave;
 			sourceTree = "<group>";
@@ -261,6 +264,7 @@
 			files = (
 				F43CE99C2BF59EDB00BB5309 /* GameView.swift in Sources */,
 				F43CE99A2BF59EDB00BB5309 /* FullyReusableMicrowaveApp.swift in Sources */,
+				F47DAFE62BF5C99500F33B6D /* GameShader.metal in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
