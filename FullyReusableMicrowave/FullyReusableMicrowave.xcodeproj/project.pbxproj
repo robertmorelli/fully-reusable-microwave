@@ -1,0 +1,167 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		F43CE9872BF5996400BB5309 /* FullyReusableMicrowave.metal in Sources */ = {isa = PBXBuildFile; fileRef = F43CE9862BF5996400BB5309 /* FullyReusableMicrowave.metal */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		F43CE9832BF5996400BB5309 /* FullyReusableMicrowave.metallib */ = {isa = PBXFileReference; explicitFileType = "archive.metal-library"; includeInIndex = 0; path = FullyReusableMicrowave.metallib; sourceTree = BUILT_PRODUCTS_DIR; };
+		F43CE9862BF5996400BB5309 /* FullyReusableMicrowave.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = FullyReusableMicrowave.metal; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXGroup section */
+		F43CE97C2BF5996400BB5309 = {
+			isa = PBXGroup;
+			children = (
+				F43CE9852BF5996400BB5309 /* FullyReusableMicrowave */,
+				F43CE9842BF5996400BB5309 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		F43CE9842BF5996400BB5309 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				F43CE9832BF5996400BB5309 /* FullyReusableMicrowave.metallib */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		F43CE9852BF5996400BB5309 /* FullyReusableMicrowave */ = {
+			isa = PBXGroup;
+			children = (
+				F43CE9862BF5996400BB5309 /* FullyReusableMicrowave.metal */,
+			);
+			path = FullyReusableMicrowave;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		F43CE9822BF5996400BB5309 /* FullyReusableMicrowave */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = F43CE98A2BF5996400BB5309 /* Build configuration list for PBXNativeTarget "FullyReusableMicrowave" */;
+			buildPhases = (
+				F43CE9812BF5996400BB5309 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = FullyReusableMicrowave;
+			productName = FullyReusableMicrowave;
+			productReference = F43CE9832BF5996400BB5309 /* FullyReusableMicrowave.metallib */;
+			productType = "com.apple.product-type.metal-library";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		F43CE97D2BF5996400BB5309 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastUpgradeCheck = 1520;
+				TargetAttributes = {
+					F43CE9822BF5996400BB5309 = {
+						CreatedOnToolsVersion = 15.2;
+					};
+				};
+			};
+			buildConfigurationList = F43CE9802BF5996400BB5309 /* Build configuration list for PBXProject "FullyReusableMicrowave" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = F43CE97C2BF5996400BB5309;
+			productRefGroup = F43CE9842BF5996400BB5309 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				F43CE9822BF5996400BB5309 /* FullyReusableMicrowave */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXSourcesBuildPhase section */
+		F43CE9812BF5996400BB5309 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				F43CE9872BF5996400BB5309 /* FullyReusableMicrowave.metal in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		F43CE9882BF5996400BB5309 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				MACOSX_DEPLOYMENT_TARGET = 14.2;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				SDKROOT = macosx;
+			};
+			name = Debug;
+		};
+		F43CE9892BF5996400BB5309 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				MACOSX_DEPLOYMENT_TARGET = 14.2;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = macosx;
+			};
+			name = Release;
+		};
+		F43CE98B2BF5996400BB5309 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = Debug;
+		};
+		F43CE98C2BF5996400BB5309 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		F43CE9802BF5996400BB5309 /* Build configuration list for PBXProject "FullyReusableMicrowave" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				F43CE9882BF5996400BB5309 /* Debug */,
+				F43CE9892BF5996400BB5309 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		F43CE98A2BF5996400BB5309 /* Build configuration list for PBXNativeTarget "FullyReusableMicrowave" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				F43CE98B2BF5996400BB5309 /* Debug */,
+				F43CE98C2BF5996400BB5309 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = F43CE97D2BF5996400BB5309 /* Project object */;
+}
