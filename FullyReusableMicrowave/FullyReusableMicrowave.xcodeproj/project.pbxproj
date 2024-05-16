@@ -8,7 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		F43CE99A2BF59EDB00BB5309 /* FullyReusableMicrowaveApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = F43CE9992BF59EDB00BB5309 /* FullyReusableMicrowaveApp.swift */; };
-		F43CE99C2BF59EDB00BB5309 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F43CE99B2BF59EDB00BB5309 /* ContentView.swift */; };
+		F43CE99C2BF59EDB00BB5309 /* GameView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F43CE99B2BF59EDB00BB5309 /* GameView.swift */; };
 		F43CE99E2BF59EDD00BB5309 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F43CE99D2BF59EDD00BB5309 /* Assets.xcassets */; };
 		F43CE9A12BF59EDD00BB5309 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F43CE9A02BF59EDD00BB5309 /* Preview Assets.xcassets */; };
 		F43CE9AC2BF59EDD00BB5309 /* FullyReusableMicrowaveTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F43CE9AB2BF59EDD00BB5309 /* FullyReusableMicrowaveTests.swift */; };
@@ -36,7 +36,7 @@
 /* Begin PBXFileReference section */
 		F43CE9962BF59EDB00BB5309 /* FullyReusableMicrowave.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = FullyReusableMicrowave.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		F43CE9992BF59EDB00BB5309 /* FullyReusableMicrowaveApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FullyReusableMicrowaveApp.swift; sourceTree = "<group>"; };
-		F43CE99B2BF59EDB00BB5309 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		F43CE99B2BF59EDB00BB5309 /* GameView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameView.swift; sourceTree = "<group>"; };
 		F43CE99D2BF59EDD00BB5309 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		F43CE9A02BF59EDD00BB5309 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
 		F43CE9A22BF59EDD00BB5309 /* FullyReusableMicrowave.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = FullyReusableMicrowave.entitlements; sourceTree = "<group>"; };
@@ -96,7 +96,7 @@
 			isa = PBXGroup;
 			children = (
 				F43CE9992BF59EDB00BB5309 /* FullyReusableMicrowaveApp.swift */,
-				F43CE99B2BF59EDB00BB5309 /* ContentView.swift */,
+				F43CE99B2BF59EDB00BB5309 /* GameView.swift */,
 				F43CE99D2BF59EDD00BB5309 /* Assets.xcassets */,
 				F43CE9A22BF59EDD00BB5309 /* FullyReusableMicrowave.entitlements */,
 				F43CE99F2BF59EDD00BB5309 /* Preview Content */,
@@ -259,7 +259,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				F43CE99C2BF59EDB00BB5309 /* ContentView.swift in Sources */,
+				F43CE99C2BF59EDB00BB5309 /* GameView.swift in Sources */,
 				F43CE99A2BF59EDB00BB5309 /* FullyReusableMicrowaveApp.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
