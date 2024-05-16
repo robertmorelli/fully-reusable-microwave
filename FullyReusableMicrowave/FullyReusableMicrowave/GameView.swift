@@ -71,6 +71,7 @@ class GameView: MTKView {
         self.colorPixelFormat = .bgra8Unorm // Set the pixel format
         self.renderer = Renderer(metalKitView: self) // Create the renderer
         self.delegate = self // Set the delegate to self
+        self.clearColor = MTLClearColor(red: 0.0, green: 0.0, blue: 1.0, alpha: 1.0) // Set the background color
     }
     
     required init(coder: NSCoder) {
