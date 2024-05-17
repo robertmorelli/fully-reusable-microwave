@@ -5,8 +5,8 @@
 //  Created by Marco Puig on 5/16/24.
 //
 
-#define gameWidth 64
-#define gameHeight 64
+#define gameWidth 512
+#define gameHeight 512
 #define indexOf(x,y) (y) * gameWidth + (x)
 
 #include <metal_stdlib>
