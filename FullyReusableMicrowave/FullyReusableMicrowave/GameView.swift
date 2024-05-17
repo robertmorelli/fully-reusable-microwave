@@ -11,52 +11,29 @@ import MetalKit
 
 
 struct cell {
-    var id: Int
+    var id: UInt64
 }
 
 
 // Basic Renderer class implementation
 class Renderer {
     // Variables to hold Metal objects
-    var device: MTLDevice?
     var commandQueue: MTLCommandQueue?
     var pipelineState: MTLRenderPipelineState?
     var computePipelineState: MTLComputePipelineState?
-    
-    let lock = NSLock()
-    
-    
-    static var fullscreenQuad: [SIMD3<Float>] = [
-        SIMD3<Float>( 1.0,  1.0, 0.0),
-        SIMD3<Float>( 1.0, -1.0, 0.0),
-        SIMD3<Float>( -1.0, 1.0, 0.0),
-        
-        SIMD3<Float>( -1.0, -1.0, 0.0),
-        SIMD3<Float>( 1.0, -1.0, 0.0),
-        SIMD3<Float>( -1.0, 1.0, 0.0)
-    ]
-    
-    var gameBoard: [cell] = Array(repeating: cell(id: 0), count: 64 * 64)
-    
-    var vertexBuffer: MTLBuffer!
+    var lockGameBuffer = NSLock()
     var gameBuffer: MTLBuffer!
-    
+    var screenSizeBuffer: MTLBuffer!
     
     // Initializer which sets up the Metal device, command queue, and pipeline state
     init(metalKitView: MTKView) {
-        self.device = MTLCreateSystemDefaultDevice() // Create the default Metal device
-        metalKitView.device = self.device // Assign the device to the MetalKit view
-        self.commandQueue = device?.makeCommandQueue() // Create a command queue
-        setupPipeline() // Set up the rendering pipeline
-        vertexBuffer = device?.makeBuffer(bytes: Renderer.fullscreenQuad, length: MemoryLayout<SIMD3<Float>>.stride * Renderer.fullscreenQuad.count, options: [])
+        guard let device = MTLCreateSystemDefaultDevice() else {
+            return
+        } // Create the default Metal device
+        metalKitView.device = device // Assign the device to the MetalKit view
+        commandQueue = device.makeCommandQueue() // Create a command queue
         
-        gameBuffer = device?.makeBuffer(bytes: gameBoard, length: MemoryLayout<cell>.stride * gameBoard.count, options: [ ])
-    }
-    
-    // Method to set up the rendering pipeline
-    func setupPipeline() {
-        let library = device?.makeDefaultLibrary() // Get the default library containing shader code
-        
+        let library = device.makeDefaultLibrary() // Get the default library containing shader code
         
         //render pipeline for draw
         let vertexFunction = library?.makeFunction(name: "vertex_main") // Get the vertex shader function
@@ -71,18 +48,30 @@ class Renderer {
         let kernelFunction = library?.makeFunction(name: "update_world")
         let computeDescriptor = MTLComputePipelineDescriptor()
         computeDescriptor.computeFunction = kernelFunction
-
+        
         do {
-            pipelineState = try device?.makeRenderPipelineState(descriptor: pipelineDescriptor)
-            computePipelineState = try device?.makeComputePipelineState(descriptor: computeDescriptor, options: [.argumentInfo, .bufferTypeInfo], reflection: nil)
-            
+            pipelineState = try device.makeRenderPipelineState(descriptor: pipelineDescriptor)
+            computePipelineState = try device.makeComputePipelineState(
+                descriptor: computeDescriptor,
+                options: [.argumentInfo, .bufferTypeInfo],
+                reflection: nil)
         } catch {
-            // Print the error if pipeline state creation fails
-            print(error)
-            print("your mom")
+            fatalError("turds")
         }
+        
+        gameBuffer = device.makeBuffer(
+            length: MemoryLayout<cell>.stride * 512 * 512,
+            options: [ ])
+        
+        screenSizeBuffer = device.makeBuffer(
+            length: MemoryLayout<Float>.stride * 2,
+            options: [ ])
+        
+        let timer = DispatchSource.makeTimerSource()
+        timer.schedule(deadline: .now(), repeating: .milliseconds(1000))
+        timer.setEventHandler { self.updatePhysics() }
+        timer.resume()
     }
-    
     //make keyinput buffer
     //update on key clicks
     
@@ -97,7 +86,7 @@ class Renderer {
         //do gameboard and kernel call
         //gets called on a timer
         //lock when draw
-        lock.lock()
+        lockGameBuffer.lock()
         guard let commandBuffer = commandQueue?.makeCommandBuffer(),
               let computeEncoder = commandBuffer.makeComputeCommandEncoder()
         else {
@@ -108,20 +97,18 @@ class Renderer {
         
         computeEncoder.setBuffer(gameBuffer, offset: 0, index: 0)
         
-        
         let gridSize = MTLSize(width: 64, height: 64, depth: 1)
         let threadGroupSize = MTLSize(width: 16, height: 16, depth: 1)
         computeEncoder.dispatchThreads(gridSize, threadsPerThreadgroup: threadGroupSize)
         computeEncoder.endEncoding()
         commandBuffer.commit()
         commandBuffer.waitUntilCompleted()
-        lock.unlock()
+        lockGameBuffer.unlock()
     }
     
     // Method to perform drawing operations
     func draw(in view: MTKView) {
-        updatePhysics()
-        lock.lock()
+        lockGameBuffer.lock()
         //TODO: do lock stuff
         guard let drawable = view.currentDrawable, // Get the current drawable
               let renderPassDescriptor = view.currentRenderPassDescriptor, // Get the render pass descriptor
@@ -134,28 +121,23 @@ class Renderer {
         
         renderEncoder.setRenderPipelineState(pipelineState!) // Set the pipeline state
         
-        renderEncoder.setVertexBuffer(
-            vertexBuffer,
-            offset: 0,
-            index: 0)
-        renderEncoder.setFragmentBuffer(
-            device?.makeBuffer(
-                bytes: [
-                    Float(NSApplication.shared.windows.first?.frame.width ?? 0),
-                    Float(NSApplication.shared.windows.first?.frame.height ?? 0)],
-                length: MemoryLayout<Float>.stride * 2,
-                options: [ ]),
-            offset: 0,
-            index: 0)
+        let screenSize = screenSizeBuffer.contents().assumingMemoryBound(to: Float.self)
+        screenSize[0] = Float(NSApplication.shared.windows.first?.frame.width ?? 0)
+        screenSize[1] = Float(NSApplication.shared.windows.first?.frame.height ?? 0)
+        
+        renderEncoder.setFragmentBuffer(screenSizeBuffer, offset: 0, index: 0)
         renderEncoder.setFragmentBuffer(gameBuffer, offset: 0, index: 1)
-        renderEncoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: Renderer.fullscreenQuad.count)
+        
+        //relies on constant in metal shader
+        //draws a fullscreen quad
+        renderEncoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3 * 2)
         
         renderEncoder.endEncoding() // End encoding
         
         commandBuffer.present(drawable) // Present the drawable
         commandBuffer.commit() // Commit the command buffer
         commandBuffer.waitUntilCompleted()
-        lock.unlock()
+        lockGameBuffer.unlock()
     }
 }
 
