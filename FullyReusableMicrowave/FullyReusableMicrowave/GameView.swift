@@ -23,6 +23,8 @@ class Renderer {
     var pipelineState: MTLRenderPipelineState?
     var computePipelineState: MTLComputePipelineState?
     
+    let lock = NSLock()
+    
     
     static var fullscreenQuad: [SIMD3<Float>] = [
         SIMD3<Float>( 1.0,  1.0, 0.0),
@@ -34,7 +36,7 @@ class Renderer {
         SIMD3<Float>( -1.0, 1.0, 0.0)
     ]
     
-    var gameBoard: [cell] = Array(repeating: cell(id: 0), count: 512 * 512)
+    var gameBoard: [cell] = Array(repeating: cell(id: 0), count: 64 * 64)
     
     var vertexBuffer: MTLBuffer!
     var gameBuffer: MTLBuffer!
@@ -95,10 +97,31 @@ class Renderer {
         //do gameboard and kernel call
         //gets called on a timer
         //lock when draw
+        lock.lock()
+        guard let commandBuffer = commandQueue?.makeCommandBuffer(),
+              let computeEncoder = commandBuffer.makeComputeCommandEncoder()
+        else {
+            return
+        }
+        
+        computeEncoder.setComputePipelineState(computePipelineState!)
+        
+        computeEncoder.setBuffer(gameBuffer, offset: 0, index: 0)
+        
+        
+        let gridSize = MTLSize(width: 64, height: 64, depth: 1)
+        let threadGroupSize = MTLSize(width: 16, height: 16, depth: 1)
+        computeEncoder.dispatchThreads(gridSize, threadsPerThreadgroup: threadGroupSize)
+        computeEncoder.endEncoding()
+        commandBuffer.commit()
+        commandBuffer.waitUntilCompleted()
+        lock.unlock()
     }
     
     // Method to perform drawing operations
     func draw(in view: MTKView) {
+        updatePhysics()
+        lock.lock()
         //TODO: do lock stuff
         guard let drawable = view.currentDrawable, // Get the current drawable
               let renderPassDescriptor = view.currentRenderPassDescriptor, // Get the render pass descriptor
@@ -124,13 +147,15 @@ class Renderer {
                 options: [ ]),
             offset: 0,
             index: 0)
+        renderEncoder.setFragmentBuffer(gameBuffer, offset: 0, index: 1)
         renderEncoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: Renderer.fullscreenQuad.count)
-
         
         renderEncoder.endEncoding() // End encoding
         
         commandBuffer.present(drawable) // Present the drawable
         commandBuffer.commit() // Commit the command buffer
+        commandBuffer.waitUntilCompleted()
+        lock.unlock()
     }
 }
 
