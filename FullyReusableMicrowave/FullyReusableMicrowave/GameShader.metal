@@ -15,7 +15,7 @@ using namespace metal;
 
 typedef enum: uint64_t {
     dead = 0,
-    alive
+    alive = 1
 } cellType;
 
 
@@ -36,7 +36,7 @@ constant float3 fullscreenQuad[] = {
 
 
 kernel void update_world(device cell *gameBoard [[ buffer(0) ]], uint2 id [[thread_position_in_grid]]){
-    uint index = id.y * 64 + id.x;
+    uint index = indexOf(id.x, id.y);
     if(gameBoard[index].id == alive){
         gameBoard[index].id = dead;
     }
@@ -55,24 +55,17 @@ fragment half4 fragment_main(device float *screenSize [[ buffer(0) ]], device ce
     
     float height = screenSize[1];
     float y = fragCoord.y;
-    float ynorm = y / height;
-    int ygrid = floor(ynorm * 64);
-    
     
     float width = screenSize[0];
     float x = fragCoord.x;
-    float xnorm = x / width;
-    int xgrid = floor(xnorm * 64);
     
-    
-    int gridIndex = ygrid * 64 + xgrid;
-    
-    cell myCell = gameBoard[gridIndex];
+    //TODO: get actual cell
+    cell myCell = gameBoard[0];
     
     
                                  
     //TODO: get from game board
     //TODO: shift by world position (camera position)
     //TODO: get real ass screen size
-    return half4(x / width, y / height, myCell.id == alive ? 1 : 0 , 1.0);
+    return half4(x / width, y / height, myCell.id, 1.0);
 }

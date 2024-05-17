@@ -8,12 +8,12 @@
 import SwiftUI
 import MetalKit
 
-
+let gameWidth = 64;
+let gameHeight = 64;
 
 struct cell {
     var id: UInt64
 }
-
 
 // Basic Renderer class implementation
 class Renderer {
@@ -24,6 +24,7 @@ class Renderer {
     var lockGameBuffer = NSLock()
     var gameBuffer: MTLBuffer!
     var screenSizeBuffer: MTLBuffer!
+    var timer: DispatchSourceTimer!
     
     // Initializer which sets up the Metal device, command queue, and pipeline state
     init(metalKitView: MTKView) {
@@ -60,16 +61,19 @@ class Renderer {
         }
         
         gameBuffer = device.makeBuffer(
-            length: MemoryLayout<cell>.stride * 512 * 512,
-            options: [ ])
+            length: MemoryLayout<cell>.stride * gameWidth * gameHeight,
+            options: [ .storageModePrivate ])
         
         screenSizeBuffer = device.makeBuffer(
             length: MemoryLayout<Float>.stride * 2,
             options: [ ])
         
-        let timer = DispatchSource.makeTimerSource()
-        timer.schedule(deadline: .now(), repeating: .milliseconds(1000))
-        timer.setEventHandler { self.updatePhysics() }
+        
+        timer = DispatchSource.makeTimerSource(queue: DispatchQueue.main)
+        timer.schedule(deadline: .now(), repeating: .milliseconds(500))
+        timer.setEventHandler {
+            self.updatePhysics()
+        }
         timer.resume()
     }
     //make keyinput buffer
@@ -97,7 +101,7 @@ class Renderer {
         
         computeEncoder.setBuffer(gameBuffer, offset: 0, index: 0)
         
-        let gridSize = MTLSize(width: 64, height: 64, depth: 1)
+        let gridSize = MTLSize(width: gameWidth, height: gameHeight, depth: 1)
         let threadGroupSize = MTLSize(width: 16, height: 16, depth: 1)
         computeEncoder.dispatchThreads(gridSize, threadsPerThreadgroup: threadGroupSize)
         computeEncoder.endEncoding()
