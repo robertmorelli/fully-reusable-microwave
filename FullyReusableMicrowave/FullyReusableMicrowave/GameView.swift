@@ -26,27 +26,32 @@ class Renderer {
     var screenSizeBuffer: MTLBuffer!
     var timer: DispatchSourceTimer!
     
+    // Variables for framerate calculation
+    var frameCount: Int = 0
+    var lastUpdateTime: CFTimeInterval = 0
+    var currentFramerate: Double = 0
+    
     // Initializer which sets up the Metal device, command queue, and pipeline state
     init(metalKitView: MTKView) {
-        metalKitView.preferredFramesPerSecond = 120;
+        // metalKitView.preferredFramesPerSecond = 120 // TODO: uncapped framerate
         guard let device = MTLCreateSystemDefaultDevice() else {
             return
-        } // Create the default Metal device
-        metalKitView.device = device // Assign the device to the MetalKit view
-        commandQueue = device.makeCommandQueue() // Create a command queue
+        }
+        metalKitView.device = device
+        commandQueue = device.makeCommandQueue()
         
-        let library = device.makeDefaultLibrary() // Get the default library containing shader code
+        let library = device.makeDefaultLibrary()
         
-        //render pipeline for draw
-        let vertexFunction = library?.makeFunction(name: "vertex_main") // Get the vertex shader function
-        let fragmentFunction = library?.makeFunction(name: "fragment_main") // Get the fragment shader function
+        // Render pipeline for draw
+        let vertexFunction = library?.makeFunction(name: "vertex_main")
+        let fragmentFunction = library?.makeFunction(name: "fragment_main")
 
-        let pipelineDescriptor = MTLRenderPipelineDescriptor() // Create a pipeline descriptor
-        pipelineDescriptor.vertexFunction = vertexFunction // Assign the vertex shader function
-        pipelineDescriptor.fragmentFunction = fragmentFunction // Assign the fragment shader function
-        pipelineDescriptor.colorAttachments[0].pixelFormat = .bgra8Unorm // Set the pixel format for color attachments
+        let pipelineDescriptor = MTLRenderPipelineDescriptor()
+        pipelineDescriptor.vertexFunction = vertexFunction
+        pipelineDescriptor.fragmentFunction = fragmentFunction
+        pipelineDescriptor.colorAttachments[0].pixelFormat = .bgra8Unorm
         
-        //kernel update for world physics
+        // Kernel update for world physics
         let kernelFunction = library?.makeFunction(name: "update_world")
         let computeDescriptor = MTLComputePipelineDescriptor()
         computeDescriptor.computeFunction = kernelFunction
@@ -58,7 +63,7 @@ class Renderer {
                 options: [.argumentInfo, .bufferTypeInfo],
                 reflection: nil)
         } catch {
-            fatalError("turds")
+            fatalError("Error creating pipeline states")
         }
         
         gameBuffer = device.makeBuffer(
@@ -69,7 +74,6 @@ class Renderer {
             length: MemoryLayout<Float>.stride * 2,
             options: [ ])
         
-        
         timer = DispatchSource.makeTimerSource(queue: DispatchQueue.main)
         timer.schedule(deadline: .now(), repeating: .milliseconds(500))
         timer.setEventHandler {
@@ -77,29 +81,31 @@ class Renderer {
         }
         timer.resume()
     }
-    //make keyinput buffer
-    //update on key clicks
     
-    func updateSmoothPLayerLocation(){
-        //update smooth player
+    // Method to update the framerate
+    func updateFramerate() {
+        frameCount += 1
+        let currentTime = CACurrentMediaTime()
+        let elapsedTime = currentTime - lastUpdateTime
+        
+        if elapsedTime > 1 {
+            currentFramerate = Double(frameCount) / elapsedTime
+            frameCount = 0
+            lastUpdateTime = currentTime
+            print("Framerate: \(currentFramerate) fps")
+            
+            NotificationCenter.default.post(name: .didUpdateFramerate, object: nil, userInfo: ["framerate": currentFramerate])
+        }
     }
     
-    func updatePhysics(){
-        //get keyboard buffer state
-        //process inputs
-        
-        //do gameboard and kernel call
-        //gets called on a timer
-        //lock when draw
+    func updatePhysics() {
         lockGameBuffer.lock()
         guard let commandBuffer = commandQueue?.makeCommandBuffer(),
-              let computeEncoder = commandBuffer.makeComputeCommandEncoder()
-        else {
+              let computeEncoder = commandBuffer.makeComputeCommandEncoder() else {
             return
         }
         
         computeEncoder.setComputePipelineState(computePipelineState!)
-        
         computeEncoder.setBuffer(gameBuffer, offset: 0, index: 0)
         
         let gridSize = MTLSize(width: gameWidth, height: gameHeight, depth: 1)
@@ -114,17 +120,14 @@ class Renderer {
     // Method to perform drawing operations
     func draw(in view: MTKView) {
         lockGameBuffer.lock()
-        //TODO: do lock stuff
-        guard let drawable = view.currentDrawable, // Get the current drawable
-              let renderPassDescriptor = view.currentRenderPassDescriptor, // Get the render pass descriptor
-              let commandBuffer = commandQueue?.makeCommandBuffer(), // Create a command buffer
-              let renderEncoder = commandBuffer.makeRenderCommandEncoder(descriptor: renderPassDescriptor)
-        else { // Create a render command encoder
+        guard let drawable = view.currentDrawable,
+              let renderPassDescriptor = view.currentRenderPassDescriptor,
+              let commandBuffer = commandQueue?.makeCommandBuffer(),
+              let renderEncoder = commandBuffer.makeRenderCommandEncoder(descriptor: renderPassDescriptor) else {
             return
         }
-            
         
-        renderEncoder.setRenderPipelineState(pipelineState!) // Set the pipeline state
+        renderEncoder.setRenderPipelineState(pipelineState!)
         
         let screenSize = screenSizeBuffer.contents().assumingMemoryBound(to: Float.self)
         screenSize[0] = Float(NSApplication.shared.windows.first?.frame.width ?? 0)
@@ -133,18 +136,21 @@ class Renderer {
         renderEncoder.setFragmentBuffer(screenSizeBuffer, offset: 0, index: 0)
         renderEncoder.setFragmentBuffer(gameBuffer, offset: 0, index: 1)
         
-        //relies on constant in metal shader
-        //draws a fullscreen quad
         renderEncoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3 * 2)
         
-        renderEncoder.endEncoding() // End encoding
+        renderEncoder.endEncoding()
         
-        commandBuffer.present(drawable) // Present the drawable
-        commandBuffer.commit() // Commit the command buffer
+        commandBuffer.present(drawable)
+        commandBuffer.commit()
         commandBuffer.waitUntilCompleted()
+        
         lockGameBuffer.unlock()
+        
+        // Update the framerate after rendering
+        updateFramerate()
     }
 }
+
 
 // Custom MTKView class for the game
 class GameView: MTKView {
@@ -185,6 +191,31 @@ struct GameViewRepresentable: NSViewRepresentable {
         // Update the view if needed
     }
 }
+
+
+// For now, Display framerate in console
+extension Notification.Name {
+    static let didUpdateFramerate = Notification.Name("didUpdateFramerate")
+}
+
+struct ContentView: View {
+    @State private var framerate: Double = 0.0
+    
+    var body: some View {
+        VStack {
+            GameViewRepresentable()
+            Text(String(format: "Framerate: %.2f fps", framerate))
+                .padding()
+                .onReceive(NotificationCenter.default.publisher(for: .didUpdateFramerate)) { notification in
+                    if let userInfo = notification.userInfo,
+                       let framerate = userInfo["framerate"] as? Double {
+                        self.framerate = framerate
+                    }
+                }
+        }
+    }
+}
+
 
 // SwiftUI preview provider
 #Preview {
