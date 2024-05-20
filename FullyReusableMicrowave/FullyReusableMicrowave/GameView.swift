@@ -8,8 +8,8 @@
 import SwiftUI
 import MetalKit
 
-let gameWidth = 512;
-let gameHeight = 512;
+let gameWidth = 64;
+let gameHeight = 64;
 
 struct cell {
     var id: UInt64
@@ -33,7 +33,6 @@ class Renderer {
     
     // Initializer which sets up the Metal device, command queue, and pipeline state
     init(metalKitView: MTKView) {
-        // metalKitView.preferredFramesPerSecond = 120 // TODO: uncapped framerate
         guard let device = MTLCreateSystemDefaultDevice() else {
             return
         }
