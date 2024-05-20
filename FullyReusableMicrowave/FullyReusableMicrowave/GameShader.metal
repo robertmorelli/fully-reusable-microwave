@@ -42,11 +42,13 @@ fragment half4 fragment_main(device float *screenSize [[ buffer(0) ]], device ce
     float y = fragCoord.y / 2;
     
     // Calculate the cell coordinates
-    uint cellX = (x + locationBuffer[0]) / zoomBuffer[0];
-    uint cellY = (y + locationBuffer[1])  / zoomBuffer[0];
+    int cellX = (x + locationBuffer[0]) / zoomBuffer[0];
+    int cellY = (y + locationBuffer[1])  / zoomBuffer[0];
     
     // Ensure the coordinates are within bounds, ig clamp doesnt exist in metal
-    if (cellX >= gameWidth || cellY >= gameHeight) return half4(0.0, 0.0, 0.0, 1.0);
+    if (cellX >= gameWidth || cellY >= gameHeight || cellX <= 0 || cellY <= 0) {
+        return half4(0.0, 0.0, 0.0, 1.0);
+    }
     
     // Get the index and retrieve the cell from the game board
     uint index = indexOf(cellX, cellY);

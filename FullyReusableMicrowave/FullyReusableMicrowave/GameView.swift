@@ -7,13 +7,22 @@
 
 import SwiftUI
 import MetalKit
+import AppKit
 
 let gameWidth = 64;
 let gameHeight = 64;
 
+let leftArrowKey: UInt16 = 123
+let rightArrowKey: UInt16 = 124
+let downArrowKey: UInt16 = 125
+let upArrowKey: UInt16 = 126
+let escapeKey: UInt16 = 53
+
 struct cell {
     var id: UInt64
 }
+
+var pressedKeys = Set<KeyEquivalent>()
 
 // Basic Renderer class implementation
 class Renderer {
@@ -26,12 +35,14 @@ class Renderer {
     var screenSizeBuffer: MTLBuffer!
     var zoomBuffer: MTLBuffer!
     var locationBuffer: MTLBuffer!
-    var timer: DispatchSourceTimer!
+    var slowPhysicsTimer: DispatchSourceTimer!
+    var fastPhysicsTimer: DispatchSourceTimer!
     
     // Variables for framerate calculation
     var frameCount: Int = 0
     var lastUpdateTime: CFTimeInterval = 0
     var currentFramerate: Double = 0
+    
     
     // Initializer which sets up the Metal device, command queue, and pipeline state
     init(metalKitView: MTKView) {
@@ -82,14 +93,26 @@ class Renderer {
         locationBuffer = device.makeBuffer(
             length: MemoryLayout<Float>.stride * 2,
             options: [ ])
+        let playerPos = locationBuffer.contents().assumingMemoryBound(to: Float.self)
+        playerPos[0] = 1;
+        playerPos[1] = 1;
         
-        timer = DispatchSource.makeTimerSource(queue: DispatchQueue.main)
-        timer.schedule(deadline: .now(), repeating: .milliseconds(500))
-        timer.setEventHandler {
+        slowPhysicsTimer = DispatchSource.makeTimerSource(queue: DispatchQueue.main)
+        slowPhysicsTimer.schedule(deadline: .now(), repeating: .milliseconds(500))
+        slowPhysicsTimer.setEventHandler {
             self.updatePhysics()
         }
-        timer.resume()
+        slowPhysicsTimer.resume()
+        
+        fastPhysicsTimer = DispatchSource.makeTimerSource(queue: DispatchQueue.main)
+        fastPhysicsTimer.schedule(deadline: .now(), repeating: .milliseconds(5))
+        fastPhysicsTimer.setEventHandler {
+            self.updateSmoothPhysics()
+        }
+        fastPhysicsTimer.resume()
+        
     }
+    
     
     // Method to update the framerate
     func updateFramerate() {
@@ -103,6 +126,23 @@ class Renderer {
             lastUpdateTime = currentTime
             
             NotificationCenter.default.post(name: .didUpdateFramerate, object: nil, userInfo: ["framerate": currentFramerate])
+        }
+    }
+    
+    func updateSmoothPhysics() {
+        for keyCode in pressedKeys {
+            switch keyCode{
+            case KeyEquivalent.leftArrow:
+                modPlayerPosX(x: -2)
+            case KeyEquivalent.rightArrow:
+                modPlayerPosX(x: 2)
+            case KeyEquivalent.upArrow:
+                modPlayerPosY(y: -2)
+            case KeyEquivalent.downArrow:
+                modPlayerPosY(y: 2)
+            default:
+                continue
+            }
         }
     }
     
@@ -160,11 +200,16 @@ class Renderer {
         updateFramerate()
     }
     
-    func setPlayerPosBuffer(){
+    func modPlayerPosX(x: Float){
         let playerPos = locationBuffer.contents().assumingMemoryBound(to: Float.self)
-        playerPos[0] = 1;
-        playerPos[1] = 1;
+        playerPos[0] += x;
     }
+    
+    func modPlayerPosY(y: Float){
+        let playerPos = locationBuffer.contents().assumingMemoryBound(to: Float.self)
+        playerPos[1] += y;
+    }
+    
     
     func setZoomBuffer(){
         let zoom = zoomBuffer.contents().assumingMemoryBound(to: Float.self)
