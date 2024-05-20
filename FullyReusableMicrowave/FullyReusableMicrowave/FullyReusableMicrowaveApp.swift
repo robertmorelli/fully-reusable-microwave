@@ -11,7 +11,7 @@ import SwiftUI
 struct FullyReusableMicrowaveApp: App {
     var body: some Scene {
         WindowGroup {
-            GameViewRepresentable()
+            ContentView()
         }
     }
 }
