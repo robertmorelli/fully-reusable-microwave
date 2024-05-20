@@ -101,7 +101,6 @@ class Renderer {
             currentFramerate = Double(frameCount) / elapsedTime
             frameCount = 0
             lastUpdateTime = currentTime
-            print("Framerate: \(currentFramerate) fps")
             
             NotificationCenter.default.post(name: .didUpdateFramerate, object: nil, userInfo: ["framerate": currentFramerate])
         }
@@ -233,8 +232,7 @@ struct ContentView: View {
     var body: some View {
         VStack {
             GameViewRepresentable()
-            Text(String(format: "Framerate: %.2f fps", framerate))
-                .padding()
+            Text(String(format: "Version 0.0.1 - %.2f FPS", framerate))
                 .onReceive(NotificationCenter.default.publisher(for: .didUpdateFramerate)) { notification in
                     if let userInfo = notification.userInfo,
                        let framerate = userInfo["framerate"] as? Double {
