@@ -37,10 +37,6 @@ vertex float4 vertex_main(uint vertexID [[ vertex_id ]]) {
 
 fragment half4 fragment_main(device float *screenSize [[ buffer(0) ]], device cell *gameBoard [[ buffer(1) ]], device float *locationBuffer [[ buffer(2) ]],device float *zoomBuffer [[ buffer(3) ]], float4 fragCoord [[position]]) {
     
-    // Grab the screen size
-    float height = screenSize[1];
-    float width = screenSize[0];
-    
     // Grab all x and y coordinates
     float x = fragCoord.x / 2;
     float y = fragCoord.y / 2;
@@ -49,10 +45,8 @@ fragment half4 fragment_main(device float *screenSize [[ buffer(0) ]], device ce
     uint cellX = (x + locationBuffer[0]) / zoomBuffer[0];
     uint cellY = (y + locationBuffer[1])  / zoomBuffer[0];
     
-    // THIS IS FUCKING UPPPPPPPP
     // Ensure the coordinates are within bounds, ig clamp doesnt exist in metal
-    cellX = min(cellX, (uint)(gameWidth - 1));
-    cellY = min(cellY, (uint)(gameHeight - 1));
+    if (cellX >= gameWidth || cellY >= gameHeight) return half4(0.0, 0.0, 0.0, 1.0);
     
     // Get the index and retrieve the cell from the game board
     uint index = indexOf(cellX, cellY);
