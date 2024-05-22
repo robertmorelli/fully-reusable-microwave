@@ -133,13 +133,13 @@ class Renderer {
         for keyCode in pressedKeys {
             switch keyCode{
             case KeyEquivalent.leftArrow:
-                modPlayerPosX(x: -1)
+                modPlayerPosX(x: -0.1)
             case KeyEquivalent.rightArrow:
-                modPlayerPosX(x: 1)
+                modPlayerPosX(x: 0.1)
             case KeyEquivalent.upArrow:
-                modPlayerPosY(y: -1)
+                modPlayerPosY(y: -0.1)
             case KeyEquivalent.downArrow:
-                modPlayerPosY(y: 1)
+                modPlayerPosY(y: 0.1)
             default:
                 continue
             }
@@ -213,7 +213,7 @@ class Renderer {
     
     func setZoomBuffer(){
         let zoom = zoomBuffer.contents().assumingMemoryBound(to: Float.self)
-        zoom[0] = 7;
+        zoom[0] = 7.0;
     }
     
     func setScreenSize(){

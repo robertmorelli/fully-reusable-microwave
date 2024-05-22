@@ -43,7 +43,7 @@ fragment half4 fragment_main(device float *screenSize [[ buffer(0) ]], device ce
     
     // Calculate the cell coordinates
     int cellX = (x + locationBuffer[0]) / zoomBuffer[0];
-    int cellY = (y + locationBuffer[1])  / zoomBuffer[0];
+    int cellY = (y + locationBuffer[1]) / zoomBuffer[0];
     
     // Ensure the coordinates are within bounds, ig clamp doesnt exist in metal
     if (cellX >= gameWidth || cellY >= gameHeight || cellX <= 0 || cellY <= 0) {
@@ -58,9 +58,30 @@ fragment half4 fragment_main(device float *screenSize [[ buffer(0) ]], device ce
     
     // TODO: DISPLAY PLAYER ON BOARD WITH location buffer and zoom buffer
 
-    // Define player's position
-    float playerX = gameBoard[gameHeight].id + locationBuffer[0];
-    float playerY = gameBoard[gameWidth].id + locationBuffer[1];
+    // Define player's position (start at the middle of the board)
+    float playerX = 32 + locationBuffer[0];
+    float playerY = 32 + locationBuffer[1];
+    
+    // basic bounds checking
+    if (playerX >= gameWidth)
+    {
+        playerX = gameWidth - 1;
+    }
+    
+    if (playerY >= gameHeight)
+    {
+        playerY = gameHeight - 1;
+    }
+    
+    if (playerX <= 0)
+    {
+        playerX = 1;
+    }
+    
+    if (playerY <= 0)
+    {
+        playerY = 1;
+    }
     
     // Check if the current fragment is at the player's position
     if (cellX == int(playerX) && cellY == int(playerY)) {
@@ -69,3 +90,4 @@ fragment half4 fragment_main(device float *screenSize [[ buffer(0) ]], device ce
     
     return half4(cellColor, cellColor, cellColor, 1.0);
 }
+
