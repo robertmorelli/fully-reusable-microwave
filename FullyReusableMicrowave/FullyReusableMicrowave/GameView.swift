@@ -133,13 +133,13 @@ class Renderer {
         for keyCode in pressedKeys {
             switch keyCode{
             case KeyEquivalent.leftArrow:
-                modPlayerPosX(x: -2)
+                modPlayerPosX(x: -1)
             case KeyEquivalent.rightArrow:
-                modPlayerPosX(x: 2)
+                modPlayerPosX(x: 1)
             case KeyEquivalent.upArrow:
-                modPlayerPosY(y: -2)
+                modPlayerPosY(y: -1)
             case KeyEquivalent.downArrow:
-                modPlayerPosY(y: 2)
+                modPlayerPosY(y: 1)
             default:
                 continue
             }

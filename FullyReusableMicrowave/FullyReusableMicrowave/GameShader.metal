@@ -56,10 +56,16 @@ fragment half4 fragment_main(device float *screenSize [[ buffer(0) ]], device ce
     // Determine the color based on the cell state
     float cellColor = (gameBoard[index].id == alive) ? 1.0 : 0.0;
     
-    //TODO: shift by world position (camera position)
+    // TODO: DISPLAY PLAYER ON BOARD WITH location buffer and zoom buffer
+
+    // Define player's position
+    float playerX = gameBoard[gameHeight].id + locationBuffer[0];
+    float playerY = gameBoard[gameWidth].id + locationBuffer[1];
+    
+    // Check if the current fragment is at the player's position
+    if (cellX == int(playerX) && cellY == int(playerY)) {
+        return half4(0.0, 1.0, 0.0, 1.0); // Green color for player
+    }
     
     return half4(cellColor, cellColor, cellColor, 1.0);
 }
-
-                                
-
