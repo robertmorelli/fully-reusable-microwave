@@ -13,6 +13,7 @@ struct FullyReusableMicrowaveApp: App {
         WindowGroup {
             ContentView()
                 .focusable()
+                .focusEffectDisabled()
                 .onKeyPress(
                     phases: [.up, .down, .repeat],
                     action: 

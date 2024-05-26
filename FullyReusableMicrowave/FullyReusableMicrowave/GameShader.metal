@@ -8,7 +8,8 @@ using namespace metal;
 
 typedef enum: uint64_t {
     dead = 0,
-    alive = 1
+    alive = 1,
+    space = 3
 } cellType;
 
 typedef struct {
@@ -39,17 +40,18 @@ kernel void update_world(device cell *gameBoard [[ buffer(0) ]], uint2 id [[thre
     bool topSide = id.y > 0;
     bool botSide = id.y < gameHeight - 1;
     
-    int neighborCount =
-        ((leftSide && topSide) ? (gameBoard[indexOf(id.x - 1, id.y - 1)].id == alive ? 1 : 0) : 0) +
-        ((leftSide) ? (gameBoard[indexOf(id.x - 1, id.y)].id == alive ? 1 : 0) : 0) +
-        ((leftSide && botSide) ? (gameBoard[indexOf(id.x - 1, id.y + 1)].id == alive ? 1 : 0): 0) +
-
-        ((topSide) ? (gameBoard[indexOf(id.x, id.y - 1)].id == alive ? 1 : 0) : 0) +
-        ((botSide) ? (gameBoard[indexOf(id.x, id.y + 1)].id == alive ? 1 : 0) : 0) +
+    cellType tl = (leftSide && topSide) ? gameBoard[indexOf(id.x - 1, id.y - 1)].id : space;
+    cellType ml = leftSide ? gameBoard[indexOf(id.x - 1, id.y)].id : space;
+    cellType bl = (leftSide && botSide) ? gameBoard[indexOf(id.x - 1, id.y + 1)].id : space;
+    cellType mt = topSide ? gameBoard[indexOf(id.x, id.y - 1)].id : space;
+    cellType mb = topSide ? gameBoard[indexOf(id.x, id.y + 1)].id : space;
+    cellType tr = (rightSide && topSide) ? gameBoard[indexOf(id.x + 1, id.y - 1)].id : space;
+    cellType mr = rightSide ? gameBoard[indexOf(id.x + 1, id.y)].id : space;
+    cellType br = (rightSide && botSide) ? gameBoard[indexOf(id.x + 1, id.y + 1)].id : space;
+    cellType neighbors[] = {tl,ml,bl,mt,mb,tr,mr,br};
     
-        ((rightSide && topSide) ? (gameBoard[indexOf(id.x + 1, id.y - 1)].id == alive ? 1 : 0) : 0) +
-        ((rightSide) ? (gameBoard[indexOf(id.x + 1, id.y)].id == alive ? 1 : 0) : 0) +
-        ((rightSide && botSide) ? (gameBoard[indexOf(id.x + 1, id.y + 1)].id == alive ? 1 : 0): 0);
+    int neighborCount = 0;
+    for(uint i = 0;i < 8; i++) neighborCount += neighbors[i] == alive ? 1 : 0;
     
     bool isAlive = gameBoard[index].id == alive;
     
