@@ -5,6 +5,7 @@
 #include <metal_stdlib>
 using namespace metal;
 
+
 typedef enum: uint64_t {
     dead = 0,
     alive = 1
@@ -24,11 +25,39 @@ constant float3 fullscreenQuad[] = {
     float3( -1.0, 1.0, 0.0)
 };
 
+
+kernel void initialize_world(device cell *gameBoard [[ buffer(0) ]], uint2 id [[thread_position_in_grid]]){
+    uint index = indexOf(id.x, id.y);
+    gameBoard[index].id = (id.x ^ id.y) % 5 ? dead : alive;
+}
+
 kernel void update_world(device cell *gameBoard [[ buffer(0) ]], uint2 id [[thread_position_in_grid]]){
     uint index = indexOf(id.x, id.y);
     
-    // make every other cell dead
-    gameBoard[index].id = (id.x ^ id.y) % 2 ? dead : alive;
+    bool leftSide = id.x > 0;
+    bool rightSide = id.x < gameWidth - 1;
+    bool topSide = id.y > 0;
+    bool botSide = id.y < gameHeight - 1;
+    
+    int neighborCount =
+        ((leftSide && topSide) ? (gameBoard[indexOf(id.x - 1, id.y - 1)].id == alive ? 1 : 0) : 0) +
+        ((leftSide) ? (gameBoard[indexOf(id.x - 1, id.y)].id == alive ? 1 : 0) : 0) +
+        ((leftSide && botSide) ? (gameBoard[indexOf(id.x - 1, id.y + 1)].id == alive ? 1 : 0): 0) +
+
+        ((topSide) ? (gameBoard[indexOf(id.x, id.y - 1)].id == alive ? 1 : 0) : 0) +
+        ((botSide) ? (gameBoard[indexOf(id.x, id.y + 1)].id == alive ? 1 : 0) : 0) +
+    
+        ((rightSide && topSide) ? (gameBoard[indexOf(id.x + 1, id.y - 1)].id == alive ? 1 : 0) : 0) +
+        ((rightSide) ? (gameBoard[indexOf(id.x + 1, id.y)].id == alive ? 1 : 0) : 0) +
+        ((rightSide && botSide) ? (gameBoard[indexOf(id.x + 1, id.y + 1)].id == alive ? 1 : 0): 0);
+    
+    bool isAlive = gameBoard[index].id == alive;
+    
+    gameBoard[index].id =
+        (isAlive && neighborCount < 2) ? dead :
+        (isAlive && neighborCount >= 2 && neighborCount <= 3) ? alive :
+        (isAlive && neighborCount > 3) ? dead :
+        (!isAlive && neighborCount == 3) ? alive : gameBoard[index].id;
 }
 
 vertex float4 vertex_main(uint vertexID [[ vertex_id ]]) {
@@ -59,35 +88,13 @@ fragment half4 fragment_main(device float *screenSize [[ buffer(0) ]], device ce
     // TODO: DISPLAY PLAYER ON BOARD WITH location buffer and zoom buffer
 
     // Define player's position (start at the middle of the board)
-    float playerX = 32 + locationBuffer[0];
-    float playerY = 32 + locationBuffer[1];
+    int playerX = locationBuffer[0] * (gameWidth - 2) + 1;
+    int playerY = locationBuffer[1] * (gameHeight - 2) + 1;
     
-    // basic bounds checking
-    if (playerX >= gameWidth)
-    {
-        playerX = gameWidth - 1;
-    }
-    
-    if (playerY >= gameHeight)
-    {
-        playerY = gameHeight - 1;
-    }
-    
-    if (playerX <= 0)
-    {
-        playerX = 1;
-    }
-    
-    if (playerY <= 0)
-    {
-        playerY = 1;
-    }
-    
+    bool isPlayer = cellX == playerX && cellY == playerY;
     // Check if the current fragment is at the player's position
-    if (cellX == int(playerX) && cellY == int(playerY)) {
-        return half4(0.0, 1.0, 0.0, 1.0); // Green color for player
-    }
-    
-    return half4(cellColor, cellColor, cellColor, 1.0);
+    return isPlayer?
+        half4(0.0, 1.0, 0.0, 1.0):
+        half4(cellColor, cellColor, cellColor, 1.0);
 }
 

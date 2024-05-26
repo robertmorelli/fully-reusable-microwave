@@ -28,8 +28,9 @@ var pressedKeys = Set<KeyEquivalent>()
 class Renderer {
     // Variables to hold Metal objects
     var commandQueue: MTLCommandQueue?
-    var pipelineState: MTLRenderPipelineState?
-    var computePipelineState: MTLComputePipelineState?
+    var renderPipelineState: MTLRenderPipelineState?
+    var updateWorldPipelineState: MTLComputePipelineState?
+    var initializeWorldPipelineState: MTLComputePipelineState?
     var lockGameBuffer = NSLock()
     var gameBuffer: MTLBuffer!
     var screenSizeBuffer: MTLBuffer!
@@ -58,20 +59,30 @@ class Renderer {
         let vertexFunction = library?.makeFunction(name: "vertex_main")
         let fragmentFunction = library?.makeFunction(name: "fragment_main")
 
-        let pipelineDescriptor = MTLRenderPipelineDescriptor()
-        pipelineDescriptor.vertexFunction = vertexFunction
-        pipelineDescriptor.fragmentFunction = fragmentFunction
-        pipelineDescriptor.colorAttachments[0].pixelFormat = .bgra8Unorm
+        let renderPipelineDescriptor = MTLRenderPipelineDescriptor()
+        renderPipelineDescriptor.vertexFunction = vertexFunction
+        renderPipelineDescriptor.fragmentFunction = fragmentFunction
+        renderPipelineDescriptor.colorAttachments[0].pixelFormat = .bgra8Unorm
         
         // Kernel update for world physics
-        let kernelFunction = library?.makeFunction(name: "update_world")
-        let computeDescriptor = MTLComputePipelineDescriptor()
-        computeDescriptor.computeFunction = kernelFunction
+        let updateKernelFunction = library?.makeFunction(name: "update_world")
+        let updatePipelineDescriptor = MTLComputePipelineDescriptor()
+        updatePipelineDescriptor.computeFunction = updateKernelFunction
+        
+        
+        // Kernel update for world physics
+        let initializeKernelFunction = library?.makeFunction(name: "initialize_world")
+        let initializePipelineDescriptor = MTLComputePipelineDescriptor()
+        initializePipelineDescriptor.computeFunction = initializeKernelFunction
         
         do {
-            pipelineState = try device.makeRenderPipelineState(descriptor: pipelineDescriptor)
-            computePipelineState = try device.makeComputePipelineState(
-                descriptor: computeDescriptor,
+            renderPipelineState = try device.makeRenderPipelineState(descriptor: renderPipelineDescriptor)
+            updateWorldPipelineState = try device.makeComputePipelineState(
+                descriptor: updatePipelineDescriptor,
+                options: [.argumentInfo, .bufferTypeInfo],
+                reflection: nil)
+            initializeWorldPipelineState = try device.makeComputePipelineState(
+                descriptor: initializePipelineDescriptor,
                 options: [.argumentInfo, .bufferTypeInfo],
                 reflection: nil)
         } catch {
@@ -94,11 +105,14 @@ class Renderer {
             length: MemoryLayout<Float>.stride * 2,
             options: [ ])
         let playerPos = locationBuffer.contents().assumingMemoryBound(to: Float.self)
-        playerPos[0] = 1;
-        playerPos[1] = 1;
+        playerPos[0] = 0.5;
+        playerPos[1] = 0.5;
+        
+        
+        initializeWorld()
         
         slowPhysicsTimer = DispatchSource.makeTimerSource(queue: DispatchQueue.main)
-        slowPhysicsTimer.schedule(deadline: .now(), repeating: .milliseconds(500))
+        slowPhysicsTimer.schedule(deadline: .now(), repeating: .milliseconds(100))
         slowPhysicsTimer.setEventHandler {
             self.updatePhysics()
         }
@@ -110,6 +124,8 @@ class Renderer {
             self.updateSmoothPhysics()
         }
         fastPhysicsTimer.resume()
+        
+        
         
     }
     
@@ -133,17 +149,36 @@ class Renderer {
         for keyCode in pressedKeys {
             switch keyCode{
             case KeyEquivalent.leftArrow:
-                modPlayerPosX(x: -0.1)
+                modPlayerPosX(x: -0.001)
             case KeyEquivalent.rightArrow:
-                modPlayerPosX(x: 0.1)
+                modPlayerPosX(x: 0.001)
             case KeyEquivalent.upArrow:
-                modPlayerPosY(y: -0.1)
+                modPlayerPosY(y: -0.001)
             case KeyEquivalent.downArrow:
-                modPlayerPosY(y: 0.1)
+                modPlayerPosY(y: 0.001)
             default:
                 continue
             }
         }
+    }
+    
+    func initializeWorld() {
+        lockGameBuffer.lock()
+        guard let commandBuffer = commandQueue?.makeCommandBuffer(),
+              let computeEncoder = commandBuffer.makeComputeCommandEncoder() else {
+            return
+        }
+        
+        computeEncoder.setComputePipelineState(initializeWorldPipelineState!)
+        computeEncoder.setBuffer(gameBuffer, offset: 0, index: 0)
+        
+        let gridSize = MTLSize(width: gameWidth, height: gameHeight, depth: 1)
+        let threadGroupSize = MTLSize(width: 16, height: 16, depth: 1)
+        computeEncoder.dispatchThreads(gridSize, threadsPerThreadgroup: threadGroupSize)
+        computeEncoder.endEncoding()
+        commandBuffer.commit()
+        commandBuffer.waitUntilCompleted()
+        lockGameBuffer.unlock()
     }
     
     func updatePhysics() {
@@ -153,7 +188,7 @@ class Renderer {
             return
         }
         
-        computeEncoder.setComputePipelineState(computePipelineState!)
+        computeEncoder.setComputePipelineState(updateWorldPipelineState!)
         computeEncoder.setBuffer(gameBuffer, offset: 0, index: 0)
         
         let gridSize = MTLSize(width: gameWidth, height: gameHeight, depth: 1)
@@ -175,7 +210,7 @@ class Renderer {
             return
         }
         
-        renderEncoder.setRenderPipelineState(pipelineState!)
+        renderEncoder.setRenderPipelineState(renderPipelineState!)
         
         setScreenSize()
         setZoomBuffer()
@@ -202,12 +237,13 @@ class Renderer {
     
     func modPlayerPosX(x: Float){
         let playerPos = locationBuffer.contents().assumingMemoryBound(to: Float.self)
-        playerPos[0] += x;
+        playerPos[0] = max(0,min(1, playerPos[0] + x));
+        
     }
     
     func modPlayerPosY(y: Float){
         let playerPos = locationBuffer.contents().assumingMemoryBound(to: Float.self)
-        playerPos[1] += y;
+        playerPos[1] = max(0,min(1, playerPos[1] + y));
     }
     
     
