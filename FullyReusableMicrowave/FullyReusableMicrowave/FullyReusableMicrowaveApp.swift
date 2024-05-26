@@ -17,11 +17,13 @@ struct FullyReusableMicrowaveApp: App {
                     phases: [.up, .down, .repeat],
                     action: 
                 { keyPress in
-                    if keyPress.phase == .up {
+                    switch keyPress.phase {
+                    case .up:
                         pressedKeys.remove(keyPress.key)
-                    }
-                    else if keyPress.phase == .down {
+                    case .down:
                         pressedKeys.insert(keyPress.key)
+                    default:
+                        break
                     }
                     return .handled
                 })
