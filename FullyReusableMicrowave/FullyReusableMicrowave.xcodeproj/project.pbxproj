@@ -14,6 +14,7 @@
 		F43CE9AC2BF59EDD00BB5309 /* FullyReusableMicrowaveTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F43CE9AB2BF59EDD00BB5309 /* FullyReusableMicrowaveTests.swift */; };
 		F43CE9B62BF59EDD00BB5309 /* FullyReusableMicrowaveUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F43CE9B52BF59EDD00BB5309 /* FullyReusableMicrowaveUITests.swift */; };
 		F43CE9B82BF59EDD00BB5309 /* FullyReusableMicrowaveUITestsLaunchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F43CE9B72BF59EDD00BB5309 /* FullyReusableMicrowaveUITestsLaunchTests.swift */; };
+		F44D88F42C0313FB00B71460 /* level1.png in Resources */ = {isa = PBXBuildFile; fileRef = F44D88F32C0313FB00B71460 /* level1.png */; };
 		F47DAFE62BF5C99500F33B6D /* GameShader.metal in Sources */ = {isa = PBXBuildFile; fileRef = F47DAFE52BF5C99500F33B6D /* GameShader.metal */; };
 /* End PBXBuildFile section */
 
@@ -46,6 +47,7 @@
 		F43CE9B12BF59EDD00BB5309 /* FullyReusableMicrowaveUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = FullyReusableMicrowaveUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		F43CE9B52BF59EDD00BB5309 /* FullyReusableMicrowaveUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FullyReusableMicrowaveUITests.swift; sourceTree = "<group>"; };
 		F43CE9B72BF59EDD00BB5309 /* FullyReusableMicrowaveUITestsLaunchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FullyReusableMicrowaveUITestsLaunchTests.swift; sourceTree = "<group>"; };
+		F44D88F32C0313FB00B71460 /* level1.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = level1.png; sourceTree = "<group>"; };
 		F47DAFE52BF5C99500F33B6D /* GameShader.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = GameShader.metal; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -97,6 +99,7 @@
 		F43CE9982BF59EDB00BB5309 /* FullyReusableMicrowave */ = {
 			isa = PBXGroup;
 			children = (
+				F44D88F32C0313FB00B71460 /* level1.png */,
 				F43CE9992BF59EDB00BB5309 /* FullyReusableMicrowaveApp.swift */,
 				F43CE99B2BF59EDB00BB5309 /* GameView.swift */,
 				F43CE99D2BF59EDD00BB5309 /* Assets.xcassets */,
@@ -237,6 +240,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				F43CE9A12BF59EDD00BB5309 /* Preview Assets.xcassets in Resources */,
+				F44D88F42C0313FB00B71460 /* level1.png in Resources */,
 				F43CE99E2BF59EDD00BB5309 /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
