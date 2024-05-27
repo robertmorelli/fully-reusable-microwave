@@ -1,3 +1,4 @@
+// REPLACE REDUNDANT WIDTH AND HEIGHT VALUES VIA BUFFER
 #define gameWidth 64
 #define gameHeight 64
 #define indexOf(x,y) ((y) * gameWidth + (x))
@@ -66,11 +67,13 @@ vertex float4 vertex_main(uint vertexID [[ vertex_id ]]) {
     return float4(fullscreenQuad[vertexID], 1);
 }
 
-fragment half4 fragment_main(device float *screenSize [[ buffer(0) ]], device cell *gameBoard [[ buffer(1) ]], device float *locationBuffer [[ buffer(2) ]],device float *zoomBuffer [[ buffer(3) ]], float4 fragCoord [[position]]) {
+fragment half4 fragment_main(device float *screenSize [[ buffer(0) ]], device cell *gameBoard [[ buffer(1) ]], device float *locationBuffer [[ buffer(2) ]],device float *zoomBuffer [[ buffer(3) ]],device float *levelDataBuffer [[ buffer(4) ]], float4 fragCoord [[position]]) {
     
     // Grab all x and y coordinates
     float x = fragCoord.x / 2;
     float y = fragCoord.y / 2;
+    
+    // TODO: iterate through leveldatabuffer to get colors to pass in to fragment shader
     
     // Calculate the cell coordinates
     int cellX = (x + locationBuffer[0]) / zoomBuffer[0];
@@ -98,5 +101,6 @@ fragment half4 fragment_main(device float *screenSize [[ buffer(0) ]], device ce
     return isPlayer?
         half4(0.0, 1.0, 0.0, 1.0):
         half4(cellColor, cellColor, cellColor, 1.0);
+        //half4(levelDataBuffer[0], levelDataBuffer[1], levelDataBuffer[2], 1.0);
 }
 

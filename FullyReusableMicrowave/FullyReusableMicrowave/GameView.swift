@@ -8,6 +8,7 @@
 import SwiftUI
 import MetalKit
 import AppKit
+import ImageIO
 
 let gameWidth = 64;
 let gameHeight = 64;
@@ -36,6 +37,7 @@ class Renderer {
     var screenSizeBuffer: MTLBuffer!
     var zoomBuffer: MTLBuffer!
     var locationBuffer: MTLBuffer!
+    var levelDataBuffer: MTLBuffer!
     var slowPhysicsTimer: DispatchSourceTimer!
     var fastPhysicsTimer: DispatchSourceTimer!
     
@@ -104,6 +106,11 @@ class Renderer {
         locationBuffer = device.makeBuffer(
             length: MemoryLayout<Float>.stride * 2,
             options: [ ])
+        
+        levelDataBuffer = device.makeBuffer(
+            length: MemoryLayout<Float>.stride * 1,
+            options: [ ])
+        
         let playerPos = locationBuffer.contents().assumingMemoryBound(to: Float.self)
         playerPos[0] = 0.5;
         playerPos[1] = 0.5;
@@ -172,7 +179,39 @@ class Renderer {
         computeEncoder.setComputePipelineState(initializeWorldPipelineState!)
         computeEncoder.setBuffer(gameBuffer, offset: 0, index: 0)
         
-        let gridSize = MTLSize(width: gameWidth, height: gameHeight, depth: 1)
+        // TODO: HANDLE IMAGE/LEVEL PARSING TO GENERATE LEVEL DATA TO PASS VIA TWO BUFFERS
+        
+        // create level data buffer
+        let levelDB = levelDataBuffer.contents().assumingMemoryBound(to: Float.self)
+        
+        // load image file
+        let levelPath = Bundle.main.path(forResource: "level1", ofType: "png")
+        let levelImage = NSImage(contentsOfFile: levelPath!)
+        
+        // get size data
+        let levelWidth = Int(levelImage!.size.width)
+        let levelHeight = Int(levelImage!.size.height)
+        
+        // pass size data on buffer
+        let gridSize = MTLSize(width: levelWidth, height: levelHeight, depth: 1)
+        
+        // get the pixel data from the image
+        let imageData = levelImage?.cgImage(forProposedRect: nil, context: nil, hints: nil)?.dataProvider?.data
+        let pixelBuffer = CFDataGetBytePtr(imageData)
+
+        // convert the pixel data into level data
+        for y in 0..<levelHeight {
+            for x in 0..<levelWidth {
+                let pixelInfo = Int(((levelWidth * y) + x) * 4)
+                let r = Float(pixelBuffer![pixelInfo]) / 255.0 // red
+                let g = Float(pixelBuffer![pixelInfo + 1]) / 255.0 // green
+                let b = Float(pixelBuffer![pixelInfo + 2]) / 255.0 // blue
+                
+                // TODO: store color data in level data buffer
+            }
+        }
+        
+        
         let threadGroupSize = MTLSize(width: 16, height: 16, depth: 1)
         computeEncoder.dispatchThreads(gridSize, threadsPerThreadgroup: threadGroupSize)
         computeEncoder.endEncoding()
