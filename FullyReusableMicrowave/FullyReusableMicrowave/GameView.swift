@@ -266,6 +266,7 @@ class Renderer {
         renderEncoder.setFragmentBuffer(gameBuffer, offset: 0, index: 1)
         renderEncoder.setFragmentBuffer(locationBuffer, offset: 0, index: 2)
         renderEncoder.setFragmentBuffer(zoomBuffer, offset: 0, index: 3)
+        renderEncoder.setFragmentBuffer(levelDataBuffer, offset: 0, index: 4)
         renderEncoder.setFragmentBuffer(boardSizeBuffer, offset: 0, index: 5)
         renderEncoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3 * 2)
         
