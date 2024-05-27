@@ -1,8 +1,4 @@
-// REPLACE REDUNDANT WIDTH AND HEIGHT VALUES VIA BUFFER
-#define gameWidth 64
-#define gameHeight 64
-#define indexOf(x,y) ((y) * gameWidth + (x))
-
+#define indexOf(x,y,gameWidth) ((y) * gameWidth + (x))
 #include <metal_stdlib>
 using namespace metal;
 
@@ -28,27 +24,31 @@ constant float3 fullscreenQuad[] = {
 };
 
 
-kernel void initialize_world(device cell *gameBoard [[ buffer(0) ]], uint2 id [[thread_position_in_grid]]){
-    uint index = indexOf(id.x, id.y);
+kernel void initialize_world(device cell *gameBoard [[ buffer(0) ]], uint2 id [[thread_position_in_grid]], device uint *levelDataBuffer [[ buffer(4) ]], device float *boardSize [[ buffer(5) ]]){
+    uint index = indexOf(id.x, id.y, boardSize[0]);
     gameBoard[index].id = (id.x ^ id.y) % 5 ? dead : alive;
 }
 
-kernel void update_world(device cell *gameBoard [[ buffer(0) ]], uint2 id [[thread_position_in_grid]]){
-    uint index = indexOf(id.x, id.y);
+kernel void update_world(device cell *gameBoard [[ buffer(0) ]], uint2 id [[thread_position_in_grid]], device uint *levelDataBuffer [[ buffer(4) ]], device float *boardSize [[ buffer(5) ]]){
+    
+    int gameWidth = boardSize[0];
+    int gameHeight = boardSize[1];
+    
+    uint index = indexOf(id.x, id.y, gameWidth);
     
     bool leftSide = id.x > 0;
     bool rightSide = id.x < gameWidth - 1;
     bool topSide = id.y > 0;
     bool botSide = id.y < gameHeight - 1;
     
-    cellType tl = (leftSide && topSide) ? gameBoard[indexOf(id.x - 1, id.y - 1)].id : space;
-    cellType ml = leftSide ? gameBoard[indexOf(id.x - 1, id.y)].id : space;
-    cellType bl = (leftSide && botSide) ? gameBoard[indexOf(id.x - 1, id.y + 1)].id : space;
-    cellType mt = topSide ? gameBoard[indexOf(id.x, id.y - 1)].id : space;
-    cellType mb = topSide ? gameBoard[indexOf(id.x, id.y + 1)].id : space;
-    cellType tr = (rightSide && topSide) ? gameBoard[indexOf(id.x + 1, id.y - 1)].id : space;
-    cellType mr = rightSide ? gameBoard[indexOf(id.x + 1, id.y)].id : space;
-    cellType br = (rightSide && botSide) ? gameBoard[indexOf(id.x + 1, id.y + 1)].id : space;
+    cellType tl = (leftSide && topSide) ? gameBoard[indexOf(id.x - 1, id.y - 1, gameWidth)].id : space;
+    cellType ml = leftSide ? gameBoard[indexOf(id.x - 1, id.y, gameWidth)].id : space;
+    cellType bl = (leftSide && botSide) ? gameBoard[indexOf(id.x - 1, id.y + 1, gameWidth)].id : space;
+    cellType mt = topSide ? gameBoard[indexOf(id.x, id.y - 1, gameWidth)].id : space;
+    cellType mb = topSide ? gameBoard[indexOf(id.x, id.y + 1, gameWidth)].id : space;
+    cellType tr = (rightSide && topSide) ? gameBoard[indexOf(id.x + 1, id.y - 1, gameWidth)].id : space;
+    cellType mr = rightSide ? gameBoard[indexOf(id.x + 1, id.y, gameWidth)].id : space;
+    cellType br = (rightSide && botSide) ? gameBoard[indexOf(id.x + 1, id.y + 1, gameWidth)].id : space;
     cellType neighbors[] = {tl,ml,bl,mt,mb,tr,mr,br};
     
     int neighborCount = 0;
@@ -67,7 +67,10 @@ vertex float4 vertex_main(uint vertexID [[ vertex_id ]]) {
     return float4(fullscreenQuad[vertexID], 1);
 }
 
-fragment half4 fragment_main(device float *screenSize [[ buffer(0) ]], device cell *gameBoard [[ buffer(1) ]], device float *locationBuffer [[ buffer(2) ]],device float *zoomBuffer [[ buffer(3) ]],device float *levelDataBuffer [[ buffer(4) ]], float4 fragCoord [[position]]) {
+fragment half4 fragment_main(device float *screenSize [[ buffer(0) ]], device cell *gameBoard [[ buffer(1) ]], device float *locationBuffer [[ buffer(2) ]],device float *zoomBuffer [[ buffer(3) ]], device float3 *levelDataBuffer [[ buffer(4) ]], float4 fragCoord [[position]], device float *boardSize [[ buffer(5) ]]) {
+    
+    int gameWidth = boardSize[0];
+    int gameHeight = boardSize[1];
     
     // Grab all x and y coordinates
     float x = fragCoord.x / 2;
@@ -85,7 +88,7 @@ fragment half4 fragment_main(device float *screenSize [[ buffer(0) ]], device ce
     }
     
     // Get the index and retrieve the cell from the game board
-    uint index = indexOf(cellX, cellY);
+    uint index = indexOf(cellX, cellY, gameWidth);
     
     // Determine the color based on the cell state
     float cellColor = (gameBoard[index].id == alive) ? 1.0 : 0.0;

@@ -10,8 +10,8 @@ import MetalKit
 import AppKit
 import ImageIO
 
-let gameWidth = 64;
-let gameHeight = 64;
+var gameWidth = 64
+var gameHeight = 64
 
 let leftArrowKey: UInt16 = 123
 let rightArrowKey: UInt16 = 124
@@ -38,8 +38,10 @@ class Renderer {
     var zoomBuffer: MTLBuffer!
     var locationBuffer: MTLBuffer!
     var levelDataBuffer: MTLBuffer!
+    var boardSizeBuffer: MTLBuffer!
     var slowPhysicsTimer: DispatchSourceTimer!
     var fastPhysicsTimer: DispatchSourceTimer!
+    var gridSize: MTLSize!
     
     // Variables for framerate calculation
     var frameCount: Int = 0
@@ -71,7 +73,6 @@ class Renderer {
         let updatePipelineDescriptor = MTLComputePipelineDescriptor()
         updatePipelineDescriptor.computeFunction = updateKernelFunction
         
-        
         // Kernel update for world physics
         let initializeKernelFunction = library?.makeFunction(name: "initialize_world")
         let initializePipelineDescriptor = MTLComputePipelineDescriptor()
@@ -91,6 +92,16 @@ class Renderer {
             fatalError("Error creating pipeline states")
         }
         
+        levelDataBuffer = device.makeBuffer(
+            length: MemoryLayout<SIMD3<Float>>.stride * gameWidth * gameHeight, // will be 64 x 64 since not yet initalized
+            options: [ ])
+        
+        boardSizeBuffer = device.makeBuffer(
+            length: MemoryLayout<Float>.stride * 2,
+            options: [ ])
+        
+        readLevelData()
+        
         gameBuffer = device.makeBuffer(
             length: MemoryLayout<cell>.stride * gameWidth * gameHeight,
             options: [ .storageModePrivate ])
@@ -107,9 +118,6 @@ class Renderer {
             length: MemoryLayout<Float>.stride * 2,
             options: [ ])
         
-        levelDataBuffer = device.makeBuffer(
-            length: MemoryLayout<Float>.stride * 1,
-            options: [ ])
         
         let playerPos = locationBuffer.contents().assumingMemoryBound(to: Float.self)
         playerPos[0] = 0.5;
@@ -134,6 +142,35 @@ class Renderer {
         
         
         
+    }
+    
+    func readLevelData()
+    {
+        // HANDLE IMAGE/LEVEL PARSING TO GENERATE LEVEL DATA TO PASS VIA TWO BUFFERS
+        
+        // create level data buffer
+        let levelDB = levelDataBuffer.contents().assumingMemoryBound(to: UnsafePointer<UInt8>.self)
+        let gameSizeB = boardSizeBuffer.contents().assumingMemoryBound(to: Float.self)
+        
+        // load image file
+        let levelPath = Bundle.main.path(forResource: "level1", ofType: "png")
+        let levelImage = NSImage(contentsOfFile: levelPath!)
+        
+        // get size data
+        gameWidth = Int(levelImage!.size.width)
+        gameHeight = Int(levelImage!.size.height)
+        
+        // update size buffer
+        gameSizeB[0] = Float(gameWidth)
+        gameSizeB[1] = Float(gameHeight)
+        
+        // get the pixel data from the image
+        let imageData = levelImage?.cgImage(forProposedRect: nil, context: nil, hints: nil)?.dataProvider?.data
+        let pixelBuffer = CFDataGetBytePtr(imageData)
+
+        // Store pixel data in level data buffer as Float3/SIMD3
+        let bruh : UnsafePointer<UInt8> = (pixelBuffer?.withMemoryRebound(to: UInt8.self, capacity: 1) { $0 })!
+        levelDB[0] = pixelBuffer ?? bruh
     }
     
     
@@ -179,40 +216,11 @@ class Renderer {
         computeEncoder.setComputePipelineState(initializeWorldPipelineState!)
         computeEncoder.setBuffer(gameBuffer, offset: 0, index: 0)
         
-        // TODO: HANDLE IMAGE/LEVEL PARSING TO GENERATE LEVEL DATA TO PASS VIA TWO BUFFERS
-        
-        // create level data buffer
-        let levelDB = levelDataBuffer.contents().assumingMemoryBound(to: Float.self)
-        
-        // load image file
-        let levelPath = Bundle.main.path(forResource: "level1", ofType: "png")
-        let levelImage = NSImage(contentsOfFile: levelPath!)
-        
-        // get size data
-        let levelWidth = Int(levelImage!.size.width)
-        let levelHeight = Int(levelImage!.size.height)
-        
         // pass size data on buffer
-        let gridSize = MTLSize(width: levelWidth, height: levelHeight, depth: 1)
-        
-        // get the pixel data from the image
-        let imageData = levelImage?.cgImage(forProposedRect: nil, context: nil, hints: nil)?.dataProvider?.data
-        let pixelBuffer = CFDataGetBytePtr(imageData)
-
-        // convert the pixel data into level data
-        for y in 0..<levelHeight {
-            for x in 0..<levelWidth {
-                let pixelInfo = Int(((levelWidth * y) + x) * 4)
-                let r = Float(pixelBuffer![pixelInfo]) / 255.0 // red
-                let g = Float(pixelBuffer![pixelInfo + 1]) / 255.0 // green
-                let b = Float(pixelBuffer![pixelInfo + 2]) / 255.0 // blue
-                
-                // TODO: store color data in level data buffer
-            }
-        }
+        let gridSize = MTLSize(width: gameWidth, height: gameHeight, depth: 1)
         
         
-        let threadGroupSize = MTLSize(width: 16, height: 16, depth: 1)
+        let threadGroupSize = MTLSize(width: gameWidth / 4, height: gameHeight / 4, depth: 1)
         computeEncoder.dispatchThreads(gridSize, threadsPerThreadgroup: threadGroupSize)
         computeEncoder.endEncoding()
         commandBuffer.commit()
