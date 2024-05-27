@@ -94,7 +94,7 @@ class Renderer {
         }
         
         levelDataBuffer = device.makeBuffer(
-            length: MemoryLayout<SIMD3<Float>>.stride * gameWidth * gameHeight,
+            length: MemoryLayout<UnsafePointer<UInt8>>.stride * gameWidth * gameHeight,
             options: [ ])
         
         boardSizeBuffer = device.makeBuffer(
@@ -294,7 +294,7 @@ class Renderer {
     
     func setZoomBuffer(){
         let zoom = zoomBuffer.contents().assumingMemoryBound(to: Float.self)
-        zoom[0] = 7.0;
+        zoom[0] = 1.0;
     }
     
     func setScreenSize(){

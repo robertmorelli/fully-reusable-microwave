@@ -67,7 +67,7 @@ vertex float4 vertex_main(uint vertexID [[ vertex_id ]]) {
     return float4(fullscreenQuad[vertexID], 1);
 }
 
-fragment half4 fragment_main(device float *screenSize [[ buffer(0) ]], device cell *gameBoard [[ buffer(1) ]], device float *locationBuffer [[ buffer(2) ]],device float *zoomBuffer [[ buffer(3) ]], device float3 *levelDataBuffer [[ buffer(4) ]], float4 fragCoord [[position]], device float *boardSize [[ buffer(5) ]]) {
+fragment half4 fragment_main(device float *screenSize [[ buffer(0) ]], device cell *gameBoard [[ buffer(1) ]], device float *locationBuffer [[ buffer(2) ]],device float *zoomBuffer [[ buffer(3) ]], device uint *levelDataBuffer [[ buffer(4) ]], float4 fragCoord [[position]], device float *boardSize [[ buffer(5) ]]) {
     
     int gameWidth = boardSize[0];
     int gameHeight = boardSize[1];
@@ -91,7 +91,7 @@ fragment half4 fragment_main(device float *screenSize [[ buffer(0) ]], device ce
     uint index = indexOf(cellX, cellY, gameWidth);
     
     // Determine the color based on the cell state
-    float cellColor = (gameBoard[index].id == alive) ? 1.0 : 0.0;
+    // float cellColor = (gameBoard[index].id == alive) ? 1.0 : 0.0;
     
     // TODO: DISPLAY PLAYER ON BOARD WITH location buffer and zoom buffer
 
@@ -103,7 +103,7 @@ fragment half4 fragment_main(device float *screenSize [[ buffer(0) ]], device ce
     // Check if the current fragment is at the player's position
     return isPlayer?
         half4(0.0, 1.0, 0.0, 1.0):
-        half4(cellColor, cellColor, cellColor, 1.0);
-        //half4(levelDataBuffer[0], levelDataBuffer[1], levelDataBuffer[2], 1.0);
+        //half4(cellColor, cellColor, cellColor, 1.0);
+        half4(levelDataBuffer[index], levelDataBuffer[index], levelDataBuffer[index], 1.0);
 }
 
