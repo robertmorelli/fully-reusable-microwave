@@ -10,19 +10,23 @@ import MetalKit
 import AppKit
 import ImageIO
 
+// default game board size
 let gameWidth = 64;
 let gameHeight = 64;
 
+// keys
 let leftArrowKey: UInt16 = 123
 let rightArrowKey: UInt16 = 124
 let downArrowKey: UInt16 = 125
 let upArrowKey: UInt16 = 126
 let escapeKey: UInt16 = 53
 
+// Cell definition to pass struct to buffer
 struct cell {
     var id: UInt64
 }
 
+// Set data structure to hold key presses
 var pressedKeys = Set<KeyEquivalent>()
 
 // Basic Renderer class implementation
@@ -38,6 +42,7 @@ class Renderer {
     var zoomBuffer: MTLBuffer!
     var locationBuffer: MTLBuffer!
     var levelDataBuffer: MTLBuffer!
+    var gameBoardSizeBuffer: MTLBuffer!
     var slowPhysicsTimer: DispatchSourceTimer!
     var fastPhysicsTimer: DispatchSourceTimer!
     
@@ -99,6 +104,10 @@ class Renderer {
             length: MemoryLayout<Float>.stride * 2,
             options: [ ])
         
+        gameBoardSizeBuffer = device.makeBuffer(
+            length: MemoryLayout<Int>.stride * 2,
+            options: [ ])
+        
         zoomBuffer = device.makeBuffer(
             length: MemoryLayout<Float>.stride * 1,
             options: [ ])
@@ -115,7 +124,6 @@ class Renderer {
         playerPos[0] = 0.5;
         playerPos[1] = 0.5;
         
-        
         initializeWorld()
         
         slowPhysicsTimer = DispatchSource.makeTimerSource(queue: DispatchQueue.main)
@@ -131,9 +139,6 @@ class Renderer {
             self.updateSmoothPhysics()
         }
         fastPhysicsTimer.resume()
-        
-        
-        
     }
     
     
@@ -170,7 +175,6 @@ class Renderer {
     }
     
     func initializeWorld() {
-        lockGameBuffer.lock()
         guard let commandBuffer = commandQueue?.makeCommandBuffer(),
               let computeEncoder = commandBuffer.makeComputeCommandEncoder() else {
             return
@@ -182,7 +186,10 @@ class Renderer {
         // TODO: HANDLE IMAGE/LEVEL PARSING TO GENERATE LEVEL DATA TO PASS VIA TWO BUFFERS
         
         // create level data buffer
-        let levelDB = levelDataBuffer.contents().assumingMemoryBound(to: Float.self)
+        let levelDataB = levelDataBuffer.contents().assumingMemoryBound(to: Float.self)
+        
+        // create game board size buffer
+        let gameSizeBoardB = gameBoardSizeBuffer.contents().assumingMemoryBound(to: Float.self)
         
         // load image file
         let levelPath = Bundle.main.path(forResource: "level1", ofType: "png")
@@ -192,32 +199,19 @@ class Renderer {
         let levelWidth = Int(levelImage!.size.width)
         let levelHeight = Int(levelImage!.size.height)
         
+        gameSizeBoardB[0] = Float(levelWidth)
+        gameSizeBoardB[1] = Float(levelHeight)
+        
         // pass size data on buffer
         let gridSize = MTLSize(width: levelWidth, height: levelHeight, depth: 1)
         
-        // get the pixel data from the image
-        let imageData = levelImage?.cgImage(forProposedRect: nil, context: nil, hints: nil)?.dataProvider?.data
-        let pixelBuffer = CFDataGetBytePtr(imageData)
-
-        // convert the pixel data into level data
-        for y in 0..<levelHeight {
-            for x in 0..<levelWidth {
-                let pixelInfo = Int(((levelWidth * y) + x) * 4)
-                let r = Float(pixelBuffer![pixelInfo]) / 255.0 // red
-                let g = Float(pixelBuffer![pixelInfo + 1]) / 255.0 // green
-                let b = Float(pixelBuffer![pixelInfo + 2]) / 255.0 // blue
-                
-                // TODO: store color data in level data buffer
-            }
-        }
-        
-        
+        // set thread group size
         let threadGroupSize = MTLSize(width: 16, height: 16, depth: 1)
+        
         computeEncoder.dispatchThreads(gridSize, threadsPerThreadgroup: threadGroupSize)
         computeEncoder.endEncoding()
         commandBuffer.commit()
         commandBuffer.waitUntilCompleted()
-        lockGameBuffer.unlock()
     }
     
     func updatePhysics() {
@@ -229,6 +223,7 @@ class Renderer {
         
         computeEncoder.setComputePipelineState(updateWorldPipelineState!)
         computeEncoder.setBuffer(gameBuffer, offset: 0, index: 0)
+        computeEncoder.setBuffer(gameBoardSizeBuffer, offset: 0, index: 1)
         
         let gridSize = MTLSize(width: gameWidth, height: gameHeight, depth: 1)
         let threadGroupSize = MTLSize(width: 16, height: 16, depth: 1)
@@ -255,11 +250,12 @@ class Renderer {
         setScreenSize()
         setZoomBuffer()
         
-        
         renderEncoder.setFragmentBuffer(screenSizeBuffer, offset: 0, index: 0)
         renderEncoder.setFragmentBuffer(gameBuffer, offset: 0, index: 1)
         renderEncoder.setFragmentBuffer(locationBuffer, offset: 0, index: 2)
         renderEncoder.setFragmentBuffer(zoomBuffer, offset: 0, index: 3)
+        renderEncoder.setFragmentBuffer(levelDataBuffer, offset: 0, index: 4)
+        renderEncoder.setFragmentBuffer(gameBoardSizeBuffer, offset: 0, index: 5)
         
         renderEncoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3 * 2)
         
@@ -341,7 +337,6 @@ struct GameViewRepresentable: NSViewRepresentable {
     }
 }
 
-
 // For now, Display framerate in console
 extension Notification.Name {
     static let didUpdateFramerate = Notification.Name("didUpdateFramerate")
@@ -353,7 +348,7 @@ struct ContentView: View {
     var body: some View {
         VStack {
             GameViewRepresentable()
-            Text(String(format: "Version 0.0.1 - %.2f FPS", framerate))
+            Text(String(format: "Version 0.0.2 - %.2f FPS", framerate))
                 .onReceive(NotificationCenter.default.publisher(for: .didUpdateFramerate)) { notification in
                     if let userInfo = notification.userInfo,
                        let framerate = userInfo["framerate"] as? Double {
