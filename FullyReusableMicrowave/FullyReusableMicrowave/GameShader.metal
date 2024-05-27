@@ -37,9 +37,9 @@ kernel void update_world(device cell *gameBoard [[ buffer(0) ]], uint2 id [[thre
     uint index = indexOf(id.x, id.y, gameWidth);
     
     bool leftSide = id.x > 0;
-    bool rightSide = id.x < gameWidth - 1;
+    bool rightSide = id.x < (gameWidth - 1);
     bool topSide = id.y > 0;
-    bool botSide = id.y < gameHeight - 1;
+    bool botSide = id.y < (gameHeight - 1);
     
     cellType tl = (leftSide && topSide) ? gameBoard[indexOf(id.x - 1, id.y - 1, gameWidth)].id : space;
     cellType ml = leftSide ? gameBoard[indexOf(id.x - 1, id.y, gameWidth)].id : space;
@@ -52,7 +52,7 @@ kernel void update_world(device cell *gameBoard [[ buffer(0) ]], uint2 id [[thre
     cellType neighbors[] = {tl,ml,bl,mt,mb,tr,mr,br};
     
     int neighborCount = 0;
-    for(uint i = 0;i < 8; i++) neighborCount += neighbors[i] == alive ? 1 : 0;
+    for (uint i = 0; i < 8; i++) neighborCount += neighbors[i] == alive ? 1 : 0;
     
     bool isAlive = gameBoard[index].id == alive;
     
