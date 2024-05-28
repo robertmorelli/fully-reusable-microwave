@@ -25,11 +25,18 @@ constant float3 fullscreenQuad[] = {
 };
 
 
-kernel void initialize_world(device cell *gameBoard [[ buffer(0) ]], device float *gameBoardSizeBuffer [[ buffer(1) ]], uint2 id [[thread_position_in_grid]]){
+kernel void initialize_world(device cell *gameBoard [[ buffer(0) ]], device float *gameBoardSizeBuffer [[ buffer(1) ]], uint2 id [[thread_position_in_grid]], texture2d<float, access::read> levelTexture [[texture(0)]], device uchar4 *levelDataBuffer [[ buffer(2) ]]){
+    
     int gameWidth = gameBoardSizeBuffer[0];
-    int gameHeight = gameBoardSizeBuffer[1];
     
     uint index = indexOf(id.x, id.y, gameWidth);
+
+    float4 color = levelTexture.read(id);
+    
+    //levelDataBuffer[index] = char4(color);
+    
+    //levelDataBuffer[index] = uchar4(color.r, color.g, color.b * 255, 255);
+
     gameBoard[index].id = (id.x ^ id.y) % 5 ? dead : alive;
 }
 
@@ -70,43 +77,41 @@ vertex float4 vertex_main(uint vertexID [[ vertex_id ]]) {
     return float4(fullscreenQuad[vertexID], 1);
 }
 
-fragment half4 fragment_main(device float *screenSize [[ buffer(0) ]], device cell *gameBoard [[ buffer(1) ]], device float *locationBuffer [[ buffer(2) ]],device float *zoomBuffer [[ buffer(3) ]], device float *levelDataBuffer [[ buffer(4) ]], device float *gameBoardSizeBuffer [[ buffer(5) ]], float4 fragCoord [[position]]) {
+fragment half4 fragment_main(
+    device float *screenSize [[ buffer(0) ]],
+    device cell *gameBoard [[ buffer(1) ]],
+    device float *locationBuffer [[ buffer(2) ]],
+    device float *zoomBuffer [[ buffer(3) ]],
+    device uchar4 *levelDataBuffer [[ buffer(4) ]],
+    device float *gameBoardSizeBuffer [[ buffer(5) ]],
+    float4 fragCoord [[position]]
+) {
     
-    int gameWidth = gameBoardSizeBuffer[0];
-    int gameHeight = gameBoardSizeBuffer[1];
+    int gameWidth = int(gameBoardSizeBuffer[0]);
+    int gameHeight = int(gameBoardSizeBuffer[1]);
     
-    // Grab all x and y coordinates
     float x = fragCoord.x / 2;
     float y = fragCoord.y / 2;
     
-    // TODO: iterate through leveldatabuffer to get colors to pass in to fragment shader
+    int cellX = int((x + locationBuffer[0]) / zoomBuffer[0]);
+    int cellY = int((y + locationBuffer[1]) / zoomBuffer[0]);
     
-    // Calculate the cell coordinates
-    int cellX = (x + locationBuffer[0]) / zoomBuffer[0];
-    int cellY = (y + locationBuffer[1]) / zoomBuffer[0];
-    
-    // Ensure the coordinates are within bounds, ig clamp doesnt exist in metal
-    if (cellX >= gameWidth || cellY >= gameHeight || cellX <= 0 || cellY <= 0) {
+    if (cellX >= gameWidth || cellY >= gameHeight || cellX < 0 || cellY < 0) {
         return half4(0.0, 0.0, 0.0, 1.0);
     }
     
-    // Get the index and retrieve the cell from the game board
-    uint index = indexOf(cellX, cellY, gameWidth);
+    int playerX = int(locationBuffer[0] * (gameWidth - 2) + 1);
+    int playerY = int(locationBuffer[1] * (gameHeight - 2) + 1);
     
-    // Determine the color based on the cell state
-    float cellColor = (gameBoard[index].id == alive) ? 1.0 : 0.0;
+    bool isPlayer = (cellX == playerX && cellY == playerY);
     
-    // TODO: DISPLAY PLAYER ON BOARD WITH location buffer and zoom buffer
-
-    // Define player's position (start at the middle of the board)
-    int playerX = locationBuffer[0] * (gameWidth - 2) + 1;
-    int playerY = locationBuffer[1] * (gameHeight - 2) + 1;
+    if (isPlayer) {
+        return half4(0.0, 1.0, 0.0, 1.0);
+    }
     
-    bool isPlayer = cellX == playerX && cellY == playerY;
-    // Check if the current fragment is at the player's position
-    return isPlayer?
-        half4(0.0, 1.0, 0.0, 1.0):
-        half4(cellColor, cellColor, cellColor, 1.0);
-        //half4(levelDataBuffer[0], levelDataBuffer[1], levelDataBuffer[2], 1.0);
+    int index = indexOf(cellX, cellY, gameWidth);
+    return half4(levelDataBuffer[index]);
 }
+
+
 
