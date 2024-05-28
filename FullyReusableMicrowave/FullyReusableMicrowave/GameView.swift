@@ -12,9 +12,6 @@ import ImageIO
 import Metal
 // import MetalPerformanceShaders maybe?? :)
 
-// default game board size
-let gameWidth = 64;
-let gameHeight = 64;
 
 // keys
 let leftArrowKey: UInt16 = 123
@@ -40,15 +37,14 @@ class Renderer {
     var updateWorldPipelineState: MTLComputePipelineState?
     var initializeWorldPipelineState: MTLComputePipelineState?
     var lockGameBuffer = NSLock()
-    var gameBuffer: MTLBuffer!
     var screenSizeBuffer: MTLBuffer!
     var zoomBuffer: MTLBuffer!
     var locationBuffer: MTLBuffer!
     var levelDataBuffer: MTLBuffer!
-    var gameBoardSizeBuffer: MTLBuffer!
     var slowPhysicsTimer: DispatchSourceTimer!
     var fastPhysicsTimer: DispatchSourceTimer!
-    var pixelBuffer: CVPixelBuffer!
+    
+    var levelTexture: MTLTexture!
     
     // Variables for framerate calculation
     var frameCount: Int = 0
@@ -100,17 +96,6 @@ class Renderer {
             fatalError("Error creating pipeline states")
         }
         
-        gameBuffer = device.makeBuffer(
-            length: MemoryLayout<cell>.stride * gameWidth * gameHeight,
-            options: [ .storageModePrivate ])
-        
-        screenSizeBuffer = device.makeBuffer(
-            length: MemoryLayout<Float>.stride * 2,
-            options: [ ])
-        
-        gameBoardSizeBuffer = device.makeBuffer(
-            length: MemoryLayout<Int>.stride * 2,
-            options: [ ])
         
         zoomBuffer = device.makeBuffer(
             length: MemoryLayout<Float>.stride * 1,
@@ -181,45 +166,26 @@ class Renderer {
         }
         
         computeEncoder.setComputePipelineState(initializeWorldPipelineState!)
-        computeEncoder.setBuffer(gameBuffer, offset: 0, index: 0)
         
-        let textureLoader = MTKTextureLoader(device: device)
+        let options: [MTKTextureLoader.Option : NSNumber] = [
+            MTKTextureLoader.Option.textureUsage:
+                NSNumber(value: MTLTextureUsage.shaderRead.rawValue | MTLTextureUsage.shaderWrite.rawValue)
+        ]
         
-        guard let levelPath = Bundle.main.path(forResource: "level1", ofType: "png"),
-              let levelData = try? Data(contentsOf: URL(fileURLWithPath: levelPath)),
-              let texture = try? textureLoader.newTexture(data: levelData, options: nil) else {
-            return
-        }
+        levelTexture = try? MTKTextureLoader(device: device)
+            .newTexture(
+                data: Data(
+                    contentsOf: URL(
+                        fileURLWithPath:
+                            Bundle.main.path(forResource: "level1", ofType: "png")!
+                    )
+                ),
+                options: options
+            )
         
-        computeEncoder.setTexture(texture, index: 0)
+        computeEncoder.setTexture(levelTexture, index: 0)
         
-        let width = texture.width
-        let height = texture.height
-        let bytesPerPixel = 4
-        let imageByteCount = width * height * bytesPerPixel
-        var pixelData = [UInt8](repeating: 0, count: imageByteCount)
-        
-        let region = MTLRegionMake2D(0, 0, width, height)
-        texture.getBytes(&pixelData, bytesPerRow: width * bytesPerPixel, from: region, mipmapLevel: 0)
-        
-        levelDataBuffer = device.makeBuffer(
-            bytes: pixelData,
-            length: MemoryLayout<SIMD4<UInt8>>.stride * gameWidth * gameHeight,
-            options: [ ]
-        )
-        
-        let gameSizeBoardB = gameBoardSizeBuffer.contents().assumingMemoryBound(to: Float.self)
-        
-        computeEncoder.setBuffer(gameBoardSizeBuffer, offset: 0, index: 1)
-        computeEncoder.setBuffer(levelDataBuffer, offset: 0, index: 2)
-        
-        let levelWidth = texture.width
-        let levelHeight = texture.height
-        
-        gameSizeBoardB[0] = Float(levelWidth)
-        gameSizeBoardB[1] = Float(levelHeight)
-        
-        let gridSize = MTLSize(width: levelWidth, height: levelHeight, depth: 1)
+        let gridSize = MTLSize(width: levelTexture.width, height: levelTexture.height, depth: 1)
         let threadGroupSize = MTLSize(width: 16, height: 16, depth: 1)
         
         computeEncoder.dispatchThreads(gridSize, threadsPerThreadgroup: threadGroupSize)
@@ -231,16 +197,16 @@ class Renderer {
     
     func updatePhysics() {
         lockGameBuffer.lock()
+        
         guard let commandBuffer = commandQueue?.makeCommandBuffer(),
               let computeEncoder = commandBuffer.makeComputeCommandEncoder() else {
             return
         }
         
         computeEncoder.setComputePipelineState(updateWorldPipelineState!)
-        computeEncoder.setBuffer(gameBuffer, offset: 0, index: 0)
-        computeEncoder.setBuffer(gameBoardSizeBuffer, offset: 0, index: 1)
+        computeEncoder.setTexture(levelTexture, index: 0)
         
-        let gridSize = MTLSize(width: gameWidth, height: gameHeight, depth: 1)
+        let gridSize = MTLSize(width: levelTexture.width, height: levelTexture.height, depth: 1)
         let threadGroupSize = MTLSize(width: 16, height: 16, depth: 1)
         computeEncoder.dispatchThreads(gridSize, threadsPerThreadgroup: threadGroupSize)
         computeEncoder.endEncoding()
@@ -262,15 +228,13 @@ class Renderer {
         
         renderEncoder.setRenderPipelineState(renderPipelineState!)
         
-        setScreenSize()
         setZoomBuffer()
         
         renderEncoder.setFragmentBuffer(screenSizeBuffer, offset: 0, index: 0)
-        renderEncoder.setFragmentBuffer(gameBuffer, offset: 0, index: 1)
         renderEncoder.setFragmentBuffer(locationBuffer, offset: 0, index: 2)
         renderEncoder.setFragmentBuffer(zoomBuffer, offset: 0, index: 3)
         renderEncoder.setFragmentBuffer(levelDataBuffer, offset: 0, index: 4)
-        renderEncoder.setFragmentBuffer(gameBoardSizeBuffer, offset: 0, index: 5)
+        renderEncoder.setFragmentTexture(levelTexture, index: 0)
         
         renderEncoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3 * 2)
         
@@ -300,13 +264,7 @@ class Renderer {
     
     func setZoomBuffer(){
         let zoom = zoomBuffer.contents().assumingMemoryBound(to: Float.self)
-        zoom[0] = 1.0;
-    }
-    
-    func setScreenSize(){
-        let screenSize = screenSizeBuffer.contents().assumingMemoryBound(to: Float.self)
-        screenSize[0] = Float(NSApplication.shared.windows.first?.frame.width ?? 0)
-        screenSize[1] = Float(NSApplication.shared.windows.first?.frame.height ?? 0)
+        zoom[0] = 4.0;
     }
 }
 
