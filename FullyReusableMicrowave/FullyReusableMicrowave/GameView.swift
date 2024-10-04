@@ -24,6 +24,10 @@ let escapeKey: UInt16 = 53
 struct cell {
     var id: UInt64
 }
+struct gameSize {
+    var width: Int32
+    var height: Int32
+}
 
 // Set data structure to hold key presses
 var pressedKeys = Set<KeyEquivalent>()
@@ -36,7 +40,6 @@ class Renderer {
     var renderPipelineState: MTLRenderPipelineState?
     var updateWorldPipelineState: MTLComputePipelineState?
     var initializeWorldPipelineState: MTLComputePipelineState?
-    var lockGameBuffer = NSLock()
     var screenSizeBuffer: MTLBuffer!
     var zoomBuffer: MTLBuffer!
     var locationBuffer: MTLBuffer!
@@ -44,7 +47,12 @@ class Renderer {
     var slowPhysicsTimer: DispatchSourceTimer!
     var fastPhysicsTimer: DispatchSourceTimer!
     
-    var levelTexture: MTLTexture!
+    var onBufferA: Bool = true
+    var gameBufferA: MTLBuffer!
+    var gameBufferB: MTLBuffer!
+    var gameSizeBuffer: MTLBuffer!
+    var physicsHeight: Int!
+    var physicsWidth: Int!
     
     // Variables for framerate calculation
     var frameCount: Int = 0
@@ -54,6 +62,7 @@ class Renderer {
     
     // Initializer which sets up the Metal device, command queue, and pipeline state
     init(metalKitView: MTKView) {
+        metalKitView.preferredFramesPerSecond = 120
         guard let device = MTLCreateSystemDefaultDevice() else {
             return
         }
@@ -111,15 +120,16 @@ class Renderer {
         
         initializeWorld(device: device)
         
-        slowPhysicsTimer = DispatchSource.makeTimerSource(queue: DispatchQueue.main)
-        slowPhysicsTimer.schedule(deadline: .now(), repeating: .milliseconds(100))
+        let physicsThread = DispatchQueue(label: "physThread")
+        slowPhysicsTimer = DispatchSource.makeTimerSource(queue: physicsThread)
+        slowPhysicsTimer.schedule(deadline: .now(), repeating: .milliseconds(10))
         slowPhysicsTimer.setEventHandler {
             self.updatePhysics()
         }
         slowPhysicsTimer.resume()
         
-        fastPhysicsTimer = DispatchSource.makeTimerSource(queue: DispatchQueue.main)
-        fastPhysicsTimer.schedule(deadline: .now(), repeating: .milliseconds(5))
+        fastPhysicsTimer = DispatchSource.makeTimerSource(queue: physicsThread)
+        fastPhysicsTimer.schedule(deadline: .now(), repeating: .milliseconds(1))
         fastPhysicsTimer.setEventHandler {
             self.updateSmoothPhysics()
         }
@@ -158,66 +168,80 @@ class Renderer {
             }
         }
     }
+    
+    /*
+    
+    let options: [MTKTextureLoader.Option : NSNumber] = [
+        MTKTextureLoader.Option.textureUsage:
+            NSNumber(value: MTLTextureUsage.shaderRead.rawValue | MTLTextureUsage.shaderWrite.rawValue)
+    ]
+    
+    
+    levelTexture = try? MTKTextureLoader(device: device)
+        .newTexture(
+            data: Data(
+                contentsOf: URL(
+                    fileURLWithPath:
+                        Bundle.main.path(forResource: "level1", ofType: "png")!
+                )
+            ),
+            options: options
+        )
+     */
 
     func initializeWorld(device: MTLDevice) {
         guard let commandBuffer = commandQueue?.makeCommandBuffer(),
               let computeEncoder = commandBuffer.makeComputeCommandEncoder() else {
             return
         }
+        physicsHeight = Int(pow(2.0,14.0))
+        physicsWidth = Int(pow(2.0,14.0))
         
+        let bufferSize = physicsHeight * physicsWidth * MemoryLayout<cell>.stride
+        gameBufferA = device.makeBuffer(length: bufferSize, options: .storageModePrivate)
+        gameBufferB = device.makeBuffer(length: bufferSize, options: .storageModePrivate)
+        computeEncoder.useResource(gameBufferA!, usage: [.read, .write])
+        computeEncoder.useResource(gameBufferB!, usage: [.read, .write])
+        
+        var size = gameSize(width: Int32(physicsWidth), height: Int32(physicsHeight))
+        gameSizeBuffer = device.makeBuffer(bytes: &size, length: MemoryLayout<gameSize>.size, options: .storageModeShared)
+        
+        onBufferA = !onBufferA;
+        computeEncoder.setBuffer(onBufferA ? gameBufferA : gameBufferB, offset: 0, index: 0)
+        computeEncoder.setBuffer(onBufferA ? gameBufferB : gameBufferA , offset: 0, index: 1)
+        computeEncoder.setBuffer(gameSizeBuffer, offset: 0, index: 2)
         computeEncoder.setComputePipelineState(initializeWorldPipelineState!)
-        
-        let options: [MTKTextureLoader.Option : NSNumber] = [
-            MTKTextureLoader.Option.textureUsage:
-                NSNumber(value: MTLTextureUsage.shaderRead.rawValue | MTLTextureUsage.shaderWrite.rawValue)
-        ]
-        
-        levelTexture = try? MTKTextureLoader(device: device)
-            .newTexture(
-                data: Data(
-                    contentsOf: URL(
-                        fileURLWithPath:
-                            Bundle.main.path(forResource: "level1", ofType: "png")!
-                    )
-                ),
-                options: options
-            )
-        
-        computeEncoder.setTexture(levelTexture, index: 0)
-        
-        let gridSize = MTLSize(width: levelTexture.width, height: levelTexture.height, depth: 1)
-        let threadGroupSize = MTLSize(width: 16, height: 16, depth: 1)
-        
+        let gridSize = MTLSize(width: physicsWidth * physicsHeight, height: 1, depth: 1)
+        let threadGroupSize = MTLSize(width: 16 * 16, height: 1, depth: 1)
         computeEncoder.dispatchThreads(gridSize, threadsPerThreadgroup: threadGroupSize)
         computeEncoder.endEncoding()
         commandBuffer.commit()
-        commandBuffer.waitUntilCompleted()
     }
 
     
     func updatePhysics() {
-        lockGameBuffer.lock()
-        
         guard let commandBuffer = commandQueue?.makeCommandBuffer(),
               let computeEncoder = commandBuffer.makeComputeCommandEncoder() else {
             return
         }
         
         computeEncoder.setComputePipelineState(updateWorldPipelineState!)
-        computeEncoder.setTexture(levelTexture, index: 0)
         
-        let gridSize = MTLSize(width: levelTexture.width, height: levelTexture.height, depth: 1)
-        let threadGroupSize = MTLSize(width: 16, height: 16, depth: 1)
+        //TODO: alternating swap
+        computeEncoder.setBuffer(gameBufferA, offset: 0, index: 0)
+        computeEncoder.setBuffer(gameBufferB, offset: 0, index: 1)
+        computeEncoder.setBuffer(gameSizeBuffer, offset: 0, index: 2)
+        
+        let gridSize = MTLSize(width: physicsWidth * physicsHeight, height: 1, depth: 1)
+        let threadGroupSize = MTLSize(width: 16 * 16, height: 1, depth: 1)
         computeEncoder.dispatchThreads(gridSize, threadsPerThreadgroup: threadGroupSize)
         computeEncoder.endEncoding()
         commandBuffer.commit()
         commandBuffer.waitUntilCompleted()
-        lockGameBuffer.unlock()
     }
     
     // Method to perform drawing operations
     func draw(in view: MTKView) {
-        lockGameBuffer.lock()
         guard let drawable = view.currentDrawable,
               let renderPassDescriptor = view.currentRenderPassDescriptor,
               let commandBuffer = commandQueue?.makeCommandBuffer(),
@@ -233,8 +257,8 @@ class Renderer {
         renderEncoder.setFragmentBuffer(screenSizeBuffer, offset: 0, index: 0)
         renderEncoder.setFragmentBuffer(locationBuffer, offset: 0, index: 2)
         renderEncoder.setFragmentBuffer(zoomBuffer, offset: 0, index: 3)
-        renderEncoder.setFragmentBuffer(levelDataBuffer, offset: 0, index: 4)
-        renderEncoder.setFragmentTexture(levelTexture, index: 0)
+        renderEncoder.setFragmentBuffer(gameBufferA, offset: 0, index: 4)
+        renderEncoder.setFragmentBuffer(gameSizeBuffer, offset: 0, index: 5)
         
         renderEncoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3 * 2)
         
@@ -243,8 +267,6 @@ class Renderer {
         commandBuffer.present(drawable)
         commandBuffer.commit()
         commandBuffer.waitUntilCompleted()
-        
-        lockGameBuffer.unlock()
         
         // Update the framerate after rendering
         updateFramerate()
@@ -264,7 +286,7 @@ class Renderer {
     
     func setZoomBuffer(){
         let zoom = zoomBuffer.contents().assumingMemoryBound(to: Float.self)
-        zoom[0] = 4.0;
+        zoom[0] = 0.10;
     }
 }
 
