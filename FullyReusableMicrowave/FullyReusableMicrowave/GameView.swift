@@ -122,7 +122,7 @@ class Renderer {
         
         let physicsThread = DispatchQueue(label: "physThread")
         slowPhysicsTimer = DispatchSource.makeTimerSource(queue: physicsThread)
-        slowPhysicsTimer.schedule(deadline: .now(), repeating: .milliseconds(10))
+        slowPhysicsTimer.schedule(deadline: .now(), repeating: .milliseconds(1))
         slowPhysicsTimer.setEventHandler {
             self.updatePhysics()
         }
@@ -194,8 +194,8 @@ class Renderer {
               let computeEncoder = commandBuffer.makeComputeCommandEncoder() else {
             return
         }
-        physicsHeight = Int(pow(2.0,14.0))
-        physicsWidth = Int(pow(2.0,14.0))
+        physicsHeight = Int(pow(2.0,13.0))
+        physicsWidth = Int(pow(2.0,13.0))
         
         let bufferSize = physicsHeight * physicsWidth * MemoryLayout<cell>.stride
         gameBufferA = device.makeBuffer(length: bufferSize, options: .storageModePrivate)
@@ -206,13 +206,12 @@ class Renderer {
         var size = gameSize(width: Int32(physicsWidth), height: Int32(physicsHeight))
         gameSizeBuffer = device.makeBuffer(bytes: &size, length: MemoryLayout<gameSize>.size, options: .storageModeShared)
         
-        onBufferA = !onBufferA;
-        computeEncoder.setBuffer(onBufferA ? gameBufferA : gameBufferB, offset: 0, index: 0)
-        computeEncoder.setBuffer(onBufferA ? gameBufferB : gameBufferA , offset: 0, index: 1)
+        computeEncoder.setBuffer(gameBufferA, offset: 0, index: 0)
+        computeEncoder.setBuffer(gameBufferB, offset: 0, index: 1)
         computeEncoder.setBuffer(gameSizeBuffer, offset: 0, index: 2)
         computeEncoder.setComputePipelineState(initializeWorldPipelineState!)
-        let gridSize = MTLSize(width: physicsWidth * physicsHeight, height: 1, depth: 1)
-        let threadGroupSize = MTLSize(width: 16 * 16, height: 1, depth: 1)
+        let gridSize = MTLSize(width: physicsWidth, height: physicsHeight, depth: 1)
+        let threadGroupSize = MTLSize(width: 16, height: 16, depth: 1)
         computeEncoder.dispatchThreads(gridSize, threadsPerThreadgroup: threadGroupSize)
         computeEncoder.endEncoding()
         commandBuffer.commit()
@@ -227,13 +226,13 @@ class Renderer {
         
         computeEncoder.setComputePipelineState(updateWorldPipelineState!)
         
-        //TODO: alternating swap
-        computeEncoder.setBuffer(gameBufferA, offset: 0, index: 0)
-        computeEncoder.setBuffer(gameBufferB, offset: 0, index: 1)
+        onBufferA = !onBufferA;
+        computeEncoder.setBuffer(gameBufferA, offset: 0, index: onBufferA ? 0 : 1)
+        computeEncoder.setBuffer(gameBufferB, offset: 0, index: onBufferA ? 1 : 0)
         computeEncoder.setBuffer(gameSizeBuffer, offset: 0, index: 2)
         
-        let gridSize = MTLSize(width: physicsWidth * physicsHeight, height: 1, depth: 1)
-        let threadGroupSize = MTLSize(width: 16 * 16, height: 1, depth: 1)
+        let gridSize = MTLSize(width: physicsWidth, height: physicsHeight, depth: 1)
+        let threadGroupSize = MTLSize(width: 16, height: 16, depth: 1)
         computeEncoder.dispatchThreads(gridSize, threadsPerThreadgroup: threadGroupSize)
         computeEncoder.endEncoding()
         commandBuffer.commit()
@@ -257,7 +256,7 @@ class Renderer {
         renderEncoder.setFragmentBuffer(screenSizeBuffer, offset: 0, index: 0)
         renderEncoder.setFragmentBuffer(locationBuffer, offset: 0, index: 2)
         renderEncoder.setFragmentBuffer(zoomBuffer, offset: 0, index: 3)
-        renderEncoder.setFragmentBuffer(gameBufferA, offset: 0, index: 4)
+        renderEncoder.setFragmentBuffer(onBufferA ? gameBufferA : gameBufferB, offset: 0, index: 4)
         renderEncoder.setFragmentBuffer(gameSizeBuffer, offset: 0, index: 5)
         
         renderEncoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3 * 2)
@@ -286,9 +285,21 @@ class Renderer {
     
     func setZoomBuffer(){
         let zoom = zoomBuffer.contents().assumingMemoryBound(to: Float.self)
-        zoom[0] = 0.10;
+        zoom[0] = 0.20;
     }
 }
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
